@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Order</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: #f5f7fb;
+        }
+
+        .card {
+            border-radius: 12px;
+        }
+
+        .section-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .table thead {
+            background: #f1f3f6;
+        }
+
+        .btn-add {
+            background: #0d6efd;
+            color: white;
+        }
+
+        .btn-remove {
+            color: red;
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+            padding: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container mt-4">
+
+    <!-- HEADER -->
+    <div class="sticky-header mb-3 d-flex justify-content-between align-items-center">
+        <h3>Create Order</h3>
+        <button form="orderForm" type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle"></i> Save Order
+        </button>
+    </div>
+
+    <form method="post" id="orderForm">
+        {% csrf_token %}
+
+        <!-- ORDER DETAILS -->
+        <div class="card p-4 mb-3 shadow-sm">
+            <div class="section-title">Order Details</div>
+
+            <div class="row g-3">
+                {% for field in order_form %}
+                <div class="col-md-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ITEMS SECTION -->
+        <div class="card p-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="section-title">Items</div>
+                <button type="button" class="btn btn-add btn-sm" onclick="addRow()">
+                    <i class="bi bi-plus-circle"></i> Add Item
+                </button>
+            </div>
+
+            {{ formset.management_form }}
+
+            <table class="table table-bordered align-middle text-center" id="itemsTable">
+                <thead>
+                    <tr>
+                        <th style="width:15%">SKU</th>
+                        <th style="width:35%">Product</th>
+                        <th style="width:15%">Qty</th>
+                        <th style="width:20%">Price</th>
+                        <th style="width:10%">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for form in formset %}
+                    <tr>
+                        <td>
+                            <input type="text" class="form-control sku-input">
+                        </td>
+                        <td>{{ form.product }}</td>
+                        <td>{{ form.quantity }}</td>
+                        <td>{{ form.price }}</td>
+                        <td>
+                            <button type="button" class="btn btn-remove" onclick="removeRow(this)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </form>
+
+</div>
+
+<!-- SCRIPT -->
+<script>
+
+function addRow() {
+    let table = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
+    let rowCount = table.rows.length;
+    let formIdx = document.getElementById('id_form-TOTAL_FORMS');
+
+    let newRow = table.rows[0].cloneNode(true);
+
+    // Clear values
+    newRow.querySelectorAll('input, select').forEach(el => {
+        el.value = '';
+    });
+
+    table.appendChild(newRow);
+    formIdx.value = rowCount + 1;
+}
+
+
+function removeRow(btn) {
+    let row = btn.closest('tr');
+    let table = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
+
+    if (table.rows.length > 1) {
+        row.remove();
+    }
+}
+
+
+// SKU Auto Select
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('sku-input')) {
+
+        let row = e.target.closest('tr');
+        let sku = e.target.value;
+
+        fetch(`/api/get-product-by-sku/?sku=${sku}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.id) {
+                let dropdown = row.querySelector('select');
+                dropdown.value = data.id;
+            } else {
+                alert("Invalid SKU");
+            }
+        });
+    }
+});
+
+</script>
+
+</body>
+</html>

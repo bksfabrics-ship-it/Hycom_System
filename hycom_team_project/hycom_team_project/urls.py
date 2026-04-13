@@ -23,5 +23,5 @@ urlpatterns = [
     path('api/', include('master.urls')),
 
     # inventory app routes
-    path('api/', include('stock.urls'))
+    path('stock/', include('stock.urls'))
 ]

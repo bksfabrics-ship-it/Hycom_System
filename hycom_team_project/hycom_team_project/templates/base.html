@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hycom System</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            background: #f5f7fb;
+        }
+
+        .sidebar {
+            width: 220px;
+            height: 100vh;
+            position: fixed;
+            background: #1f2937;
+            color: white;
+            padding-top: 20px;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 12px 20px;
+            color: #cbd5e1;
+            text-decoration: none;
+        }
+
+        .sidebar a:hover {
+            background: #374151;
+            color: white;
+        }
+
+        .sidebar h4 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .content {
+            margin-left: 220px;
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h4>Hycom</h4>
+
+    <a href="/orders-ui/">📦 Orders</a>
+    <a href="/stock/products/">🧾 Products</a>
+    <a href="#">📊 Dashboard</a>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="content">
+    {% block content %}
+    {% endblock %}
+</div>
+
+</body>
+</html>
