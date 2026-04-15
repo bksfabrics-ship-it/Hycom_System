@@ -7,7 +7,7 @@ from stock.models import Product
 from django.shortcuts import render, redirect
 from django.forms import formset_factory
 from .forms import OrderForm, OrderItemForm
-
+from django.db.models import Sum
 
 
 def get_orders(request):
@@ -127,4 +127,29 @@ def create_order_ui(request):
     return render(request, 'create_order.html', {
         'order_form': order_form,
         'formset': formset
+    })
+    
+    
+    
+from django.shortcuts import render
+from stock.models import Product
+from .models import Order
+
+
+def dashboard(request):
+
+    total_products = Product.objects.count()
+    total_orders = Order.objects.count()
+    total_stock = Product.objects.aggregate(total=Sum('stock'))['total'] or 0
+
+    low_stock_products = Product.objects.filter(stock__lte=5)
+
+    recent_orders = Order.objects.all().order_by('-id')[:5]
+
+    return render(request, 'dashboard.html', {
+        'total_products': total_products,
+        'total_orders': total_orders,
+        'total_stock': total_stock,
+        'low_stock_products': low_stock_products,
+        'recent_orders': recent_orders
     })

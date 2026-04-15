@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Dashboard</h3>
+    </div>
+
+    <!-- TOP CARDS -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 text-center">
+                <h6>Total Products</h6>
+                <h2>{{ total_products }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 text-center">
+                <h6>Total Orders</h6>
+                <h2>{{ total_orders }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 text-center">
+                <h6>Total Stock</h6>
+                <h2>{{ total_stock }}</h2>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- LOW STOCK SECTION -->
+    <div class="card shadow-sm p-3 mb-4">
+        <h5>⚠ Low Stock Products (≤ 5)</h5>
+
+        <div class="table-responsive mt-2">
+            <table class="table table-bordered text-center align-middle">
+
+                <thead class="table-light">
+                    <tr>
+                        <th>Product</th>
+                        <th>SKU</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for p in low_stock_products %}
+                    <tr>
+                        <td>{{ p.name }}</td>
+                        <td>{{ p.sku }}</td>
+                        <td>
+                            <span class="badge bg-danger">{{ p.stock }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3">No low stock items</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+    <!-- RECENT ORDERS -->
+    <div class="card shadow-sm p-3">
+        <h5>Recent Orders</h5>
+
+        <div class="table-responsive mt-2">
+            <table class="table table-bordered text-center align-middle">
+
+                <thead class="table-light">
+                    <tr>
+                        <th>Order No</th>
+                        <th>Customer</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for o in recent_orders %}
+                    <tr>
+                        <td>{{ o.order_number }}</td>
+                        <td>{{ o.customer_name }}</td>
+                        <td>
+                            {% if o.status == "Pending" %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% elif o.status == "Dispatched" %}
+                                <span class="badge bg-success">Dispatched</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ o.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ o.total_amount }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">No orders yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

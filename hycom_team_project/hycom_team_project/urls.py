@@ -19,9 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # master app routes
     path('api/', include('master.urls')),
-
-    # inventory app routes
     path('stock/', include('stock.urls'))
 ]

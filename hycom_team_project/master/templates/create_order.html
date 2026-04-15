@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% comment %} <!DOCTYPE html>
 <html>
 <head>
     <title>Create Order</title>
@@ -174,4 +174,27 @@ document.addEventListener('change', function(e) {
 </script>
 
 </body>
-</html>
+</html> {% endcomment %}
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h3>Create Order</h3>
+
+<form method="post">
+    {% csrf_token %}
+
+    {{ order_form.as_p }}
+
+    <h4>Items</h4>
+    {{ formset.management_form }}
+
+    {% for form in formset %}
+        {{ form.as_p }}
+    {% endfor %}
+
+    <button type="submit" class="btn btn-success">Save</button>
+</form>
+
+{% endblock %}
