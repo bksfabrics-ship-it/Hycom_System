@@ -1,181 +1,3 @@
-{% comment %} <!DOCTYPE html>
-<html>
-<head>
-    <title>Create Order</title>
-
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-
-    <style>
-        body {
-            background: #f5f7fb;
-        }
-
-        .card {
-            border-radius: 12px;
-        }
-
-        .section-title {
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .table thead {
-            background: #f1f3f6;
-        }
-
-        .btn-add {
-            background: #0d6efd;
-            color: white;
-        }
-
-        .btn-remove {
-            color: red;
-        }
-
-        .sticky-header {
-            position: sticky;
-            top: 0;
-            background: white;
-            z-index: 10;
-            padding: 10px 0;
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="container mt-4">
-
-    <!-- HEADER -->
-    <div class="sticky-header mb-3 d-flex justify-content-between align-items-center">
-        <h3>Create Order</h3>
-        <button form="orderForm" type="submit" class="btn btn-success">
-            <i class="bi bi-check-circle"></i> Save Order
-        </button>
-    </div>
-
-    <form method="post" id="orderForm">
-        {% csrf_token %}
-
-        <!-- ORDER DETAILS -->
-        <div class="card p-4 mb-3 shadow-sm">
-            <div class="section-title">Order Details</div>
-
-            <div class="row g-3">
-                {% for field in order_form %}
-                <div class="col-md-3">
-                    <label class="form-label">{{ field.label }}</label>
-                    {{ field }}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- ITEMS SECTION -->
-        <div class="card p-4 shadow-sm">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="section-title">Items</div>
-                <button type="button" class="btn btn-add btn-sm" onclick="addRow()">
-                    <i class="bi bi-plus-circle"></i> Add Item
-                </button>
-            </div>
-
-            {{ formset.management_form }}
-
-            <table class="table table-bordered align-middle text-center" id="itemsTable">
-                <thead>
-                    <tr>
-                        <th style="width:15%">SKU</th>
-                        <th style="width:35%">Product</th>
-                        <th style="width:15%">Qty</th>
-                        <th style="width:20%">Price</th>
-                        <th style="width:10%">Action</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for form in formset %}
-                    <tr>
-                        <td>
-                            <input type="text" class="form-control sku-input">
-                        </td>
-                        <td>{{ form.product }}</td>
-                        <td>{{ form.quantity }}</td>
-                        <td>{{ form.price }}</td>
-                        <td>
-                            <button type="button" class="btn btn-remove" onclick="removeRow(this)">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-    </form>
-
-</div>
-
-<!-- SCRIPT -->
-<script>
-
-function addRow() {
-    let table = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
-    let rowCount = table.rows.length;
-    let formIdx = document.getElementById('id_form-TOTAL_FORMS');
-
-    let newRow = table.rows[0].cloneNode(true);
-
-    // Clear values
-    newRow.querySelectorAll('input, select').forEach(el => {
-        el.value = '';
-    });
-
-    table.appendChild(newRow);
-    formIdx.value = rowCount + 1;
-}
-
-
-function removeRow(btn) {
-    let row = btn.closest('tr');
-    let table = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
-
-    if (table.rows.length > 1) {
-        row.remove();
-    }
-}
-
-
-// SKU Auto Select
-document.addEventListener('change', function(e) {
-    if (e.target.classList.contains('sku-input')) {
-
-        let row = e.target.closest('tr');
-        let sku = e.target.value;
-
-        fetch(`/api/get-product-by-sku/?sku=${sku}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.id) {
-                let dropdown = row.querySelector('select');
-                dropdown.value = data.id;
-            } else {
-                alert("Invalid SKU");
-            }
-        });
-    }
-});
-
-</script>
-
-</body>
-</html> {% endcomment %}
-
 {% extends 'base.html' %}
 
 {% block content %}
@@ -185,16 +7,188 @@ document.addEventListener('change', function(e) {
 <form method="post">
     {% csrf_token %}
 
-    {{ order_form.as_p }}
+    <!-- ORDER DETAILS -->
+    <div class="row g-3">
 
-    <h4>Items</h4>
+        <div class="col-md-3">
+            <label>Portal</label>
+            {{ order_form.portal }}
+        </div>
+
+        <div class="col-md-3">
+            <label>Fulfilment</label>
+            {{ order_form.fulfilment }}
+        </div>
+
+        <div class="col-md-3 mt-4">
+            <div class="form-check">
+                {{ order_form.is_b2b }}
+                <label class="form-check-label ms-2">Is B2B?</label>
+            </div>
+        </div>
+
+        <div class="col-md-3" id="gst_field" style="display:none;">
+            <label>GST Number</label>
+            {{ order_form.gst_number }}
+        </div>
+
+        <div class="col-md-3">
+            <label>Invoice Number</label>
+            {{ order_form.invoice_number }}
+        </div>
+
+        <div class="col-md-3">
+            <label>Invoice Date</label>
+            {{ order_form.invoice_date }}
+        </div>
+
+        <div class="col-md-3">
+            <label>Order Number</label>
+            {{ order_form.order_number }}
+        </div>
+
+        <div class="col-md-3">
+            <label>Customer Name</label>
+            {{ order_form.customer_name }}
+        </div>
+
+    </div>
+
+    <!-- ITEMS -->
+    <h4 class="mt-4">Items</h4>
+
     {{ formset.management_form }}
 
-    {% for form in formset %}
-        {{ form.as_p }}
-    {% endfor %}
+    <div id="items-container">
+
+        {% for form in formset %}
+        <div class="row g-3 mb-3 border p-3 rounded item-row">
+
+            <div class="col-md-3">
+                <label>SKU</label>
+                <input type="text" class="form-control sku-input">
+            </div>
+
+            <div class="col-md-3">
+                <label>Product</label>
+                {{ form.product }}
+            </div>
+
+            <div class="col-md-2">
+                <label>Quantity</label>
+                {{ form.quantity }}
+            </div>
+
+            <div class="col-md-2">
+                <label>Price</label>
+                {{ form.price }}
+            </div>
+
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-danger w-100" onclick="removeRow(this)">
+                    Remove
+                </button>
+            </div>
+
+        </div>
+        {% endfor %}
+
+    </div>
+
+    <button type="button" class="btn btn-primary mt-2" onclick="addRow()">
+        + Add Item
+    </button>
+
+    <br><br>
 
     <button type="submit" class="btn btn-success">Save</button>
+
 </form>
+
+<!-- JAVASCRIPT -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    let portal = document.getElementById("id_portal");
+    let fulfilment = document.getElementById("id_fulfilment");
+    let b2b = document.getElementById("id_is_b2b");
+    let gstField = document.getElementById("gst_field");
+
+    function updateFulfilment() {
+
+        let selected = portal.options[portal.selectedIndex].text;
+
+        for (let option of fulfilment.options) {
+            let text = option.text;
+
+            if (selected === "Amazon") {
+                option.style.display = (text === "Amazon" || text === "Self") ? "block" : "none";
+            }
+            else if (selected === "Flipkart") {
+                option.style.display = (text === "Flipkart" || text === "Self") ? "block" : "none";
+            }
+            else {
+                option.style.display = (text === "Self") ? "block" : "none";
+            }
+        }
+
+        fulfilment.value = "";
+    }
+
+    function toggleGST() {
+        if (b2b && b2b.checked) {
+            gstField.style.display = "block";
+        } else {
+            gstField.style.display = "none";
+        }
+    }
+
+    updateFulfilment();
+    toggleGST();
+
+    portal.addEventListener("change", updateFulfilment);
+    if (b2b) b2b.addEventListener("change", toggleGST);
+
+});
+
+
+// ADD ROW
+function addRow() {
+
+    let container = document.getElementById('items-container');
+    let totalForms = document.getElementById('id_form-TOTAL_FORMS');
+
+    let currentCount = parseInt(totalForms.value);
+    let firstRow = document.querySelector('.item-row');
+
+    let newRow = firstRow.cloneNode(true);
+
+    newRow.querySelectorAll('input, select').forEach(el => {
+        el.value = '';
+    });
+
+    newRow.innerHTML = newRow.innerHTML.replace(/form-(\d+)-/g, `form-${currentCount}-`);
+
+    container.appendChild(newRow);
+
+    totalForms.value = currentCount + 1;
+}
+
+
+// REMOVE ROW
+function removeRow(btn) {
+
+    let row = btn.closest('.item-row');
+    let container = document.getElementById('items-container');
+
+    if (container.children.length > 1) {
+        row.remove();
+
+        let totalForms = document.getElementById('id_form-TOTAL_FORMS');
+        totalForms.value = container.children.length;
+    }
+}
+
+</script>
 
 {% endblock %}

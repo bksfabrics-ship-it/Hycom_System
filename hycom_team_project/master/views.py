@@ -8,7 +8,7 @@ from django.shortcuts import render, redirect
 from django.forms import formset_factory
 from .forms import OrderForm, OrderItemForm
 from django.db.models import Sum
-
+from django.contrib import messages
 
 def get_orders(request):
     if request.method == 'GET':
@@ -41,45 +41,54 @@ def get_orders(request):
 
 
 
-@csrf_exempt
 def create_order(request):
+
     if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
+        order_form = OrderForm(request.POST)
+        formset = OrderItemForm(request.POST)
 
-            with transaction.atomic():  # 👈 ADD HERE
+        if order_form.is_valid() and formset.is_valid():
 
-                # Create Order
-                order = Order.objects.create(
-                    portal=data['portal'],
-                    order_number=data['order_number'],
-                    customer_name=data['customer_name'],
-                    invoice_number=data['invoice_number'],
-                    invoice_date=data['invoice_date'],
-                    fulfilment=data['fulfilment'],
-                    is_b2b=data['is_b2b'],
-                    gst_number=data.get('gst_number'),
-                    state_code=data['state_code'],
-                    amount=data['amount'],
-                    gst=data['gst'],
-                    remarks=data.get('remarks', '')
-                )
+            try:
+                with transaction.atomic():
 
-                # Create Order Items
-                for item in data['items']:
-                    product = Product.objects.get(id=item['product_id'])
+                    order = order_form.save()
 
-                    OrderItem.objects.create(
-                        order=order,
-                        product=product,
-                        quantity=item['quantity'],
-                        price=item['price']
-                    )
+                    items = formset.save(commit=False)
 
-            return JsonResponse({"message": "Order created successfully"})
+                    for item in items:
+                        product = item.product
+                        qty = item.quantity
 
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
+                        # ❌ VALIDATION: prevent negative stock
+                        if product.stock < qty:
+                            raise Exception(f"Not enough stock for {product.name}")
+
+                        # ✅ Reduce stock
+                        product.stock -= qty
+                        product.save()
+
+                        item.order = order
+                        item.save()
+                messages.success(request, "Order saved successfully")
+                return redirect('/orders/')
+
+            except Exception as e:
+                messages.error(request, "Something went wrong")
+                return render(request, 'create_order.html', {
+                    'order_form': order_form,
+                    'formset': formset,
+                    'error': str(e)
+                })
+
+    else:
+        order_form = OrderForm()
+        formset = OrderItemForm()
+
+    return render(request, 'create_order.html', {
+        'order_form': order_form,
+        'formset': formset
+    })
         
         
 
@@ -152,4 +161,26 @@ def dashboard(request):
         'total_stock': total_stock,
         'low_stock_products': low_stock_products,
         'recent_orders': recent_orders
+    })
+    
+    
+from django.db.models import Q
+from .models import Order
+
+
+def order_list(request):
+    query = request.GET.get('q')
+
+    if query:
+        orders = Order.objects.filter(
+            Q(order_number__icontains=query) |
+            Q(customer_name__icontains=query) |
+            Q(portal__icontains=query)
+        ).order_by('-id')
+    else:
+        orders = Order.objects.all().order_by('-id')
+
+    return render(request, 'order_list.html', {
+        'orders': orders,
+        'query': query
     })

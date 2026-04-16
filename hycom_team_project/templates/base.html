@@ -1,6 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <style>
+        @media (max-width: 768px) {
+            .col-md-3, .col-md-4 {
+                width: 100%;
+            }
+        }
+        input:not([type="checkbox"]),
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        /* Checkbox FIX */
+        input[type="checkbox"] {
+            width: auto !important;
+            transform: scale(1.2);
+        }
+    label {
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+</style>
     <title>Hycom System</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -41,6 +66,12 @@
             margin-left: 220px;
             padding: 20px;
         }
+        .form-check input[type="checkbox"] {
+        display: inline-block !important;
+        width: auto !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        }
     </style>
 </head>
 
@@ -50,14 +81,22 @@
 <div class="sidebar">
     <h4>Hycom</h4>
 
-    <a href="orders-ui/">📦 Orders</a>
-    <a href="stock/products/">🧾 Products</a>
-    <a href="">📊 Dashboard</a>
+    <a href="/api/">📊 Dashboard</a>
+    <a href="/api/order_list/">📦 Orders</a>
+    <a href="/stock/products/">🧾 Products</a>
+    
 </div>
 
 <!-- MAIN CONTENT -->
 <div class="content">
     {% block content %}
+        {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
     {% endblock %}
 </div>
 

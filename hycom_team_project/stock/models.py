@@ -9,8 +9,10 @@ class Product(models.Model):
     material_code = models.CharField(max_length=100, null=True, blank=True)
 
     # Variants (important for apparel like yours)
+    style = models.CharField(max_length=20, null=True, blank=True)
     color = models.CharField(max_length=50)
     size = models.CharField(max_length=20)
+    gender = models.CharField(max_length=10, null=True, blank=True)  
 
     # Category (optional but useful)
     category = models.CharField(max_length=100, null=True, blank=True)
@@ -30,6 +32,6 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} - {self.color} - {self.size}"
+        return f"{self.name} -{self.style} -{self.gender} - {self.color} - {self.size}"
     class Meta:
-        unique_together = ['name', 'color', 'size']
+        unique_together = ['name', 'style', 'gender', 'color', 'size']

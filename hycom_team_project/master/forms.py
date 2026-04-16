@@ -5,12 +5,22 @@ from .models import Order, OrderItem
 class OrderForm(forms.ModelForm):
     class Meta:
         model = Order
-        fields = [
-            'portal', 'order_number', 'customer_name',
-            'invoice_number', 'invoice_date', 'ship_date',
-            'fulfilment', 'is_b2b', 'gst_number',
-            'state_code', 'amount', 'gst', 'remarks'
-        ]
+        fields = '__all__'
+
+        widgets = {
+            'portal': forms.Select(attrs={'required': True}),
+            'invoice_number': forms.TextInput(attrs={'required': True}),
+            'order_number': forms.TextInput(attrs={'required': True}),
+            'customer_name': forms.TextInput(attrs={'required': True}),
+        }
+    def clean(self):
+        cleaned_data = super().clean()
+
+        if not cleaned_data.get('invoice_number'):
+            raise forms.ValidationError("Invoice number is required")
+
+        return cleaned_data
+
 
 
 class OrderItemForm(forms.ModelForm):

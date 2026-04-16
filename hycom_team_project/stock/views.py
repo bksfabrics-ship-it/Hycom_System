@@ -4,6 +4,7 @@ from .models import Product
 # Create your views here.
 from django.shortcuts import render, redirect
 from .forms import ProductForm
+from django.contrib import messages
 
 
 def create_product(request):
@@ -13,6 +14,7 @@ def create_product(request):
 
         if form.is_valid():
             form.save()
+            messages.success(request, "Product saved successfully")
             return redirect('/stock/product/add/')
 
     else:

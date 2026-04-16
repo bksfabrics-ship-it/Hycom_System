@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Orders</h3>
+        <a href="/api/orders-ui/" class="btn btn-primary">
+            + Create Order
+        </a>
+    </div>
+
+    <!-- CARD -->
+    <div class="card shadow-sm p-3">
+
+        <!-- SEARCH -->
+        <form method="get" class="mb-3">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text"
+                           name="q"
+                           class="form-control"
+                           placeholder="Search Order No / Customer / Portal"
+                           value="{{ query }}">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-dark">Search</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- TABLE -->
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-center align-middle">
+
+                <thead class="table-light">
+                    <tr>
+                        <th>Order No</th>
+                        <th>Invoice No</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Portal</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for o in orders %}
+                    <tr>
+                        <td>{{ o.order_number }}</td>
+                        <td>{{ o.invoice_number }}</td>
+                        <td>{{ o.invoice_date }}</td>
+                        <td>{{ o.customer_name }}</td>
+                        <td>{{ o.portal }}</td>
+                        <td>
+                            {% if o.status == "Pending" %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% elif o.status == "Dispatched" %}
+                                <span class="badge bg-success">Dispatched</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ o.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ o.total_amount }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">No orders found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
