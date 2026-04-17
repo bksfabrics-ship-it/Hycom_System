@@ -50,6 +50,7 @@ def edit_product(request, pk):
         form = ProductForm(request.POST, instance=product)
         if form.is_valid():
             form.save()
+            messages.success(request, "Product updated")
             return redirect('/stock/products/')
     else:
         form = ProductForm(instance=product)
@@ -60,4 +61,27 @@ def edit_product(request, pk):
 def delete_product(request, pk):
     product = Product.objects.get(id=pk)
     product.delete()
+    messages.success(request, "Product deleted")
     return redirect('/stock/products/')
+
+
+from django.http import JsonResponse
+from .models import Product
+
+
+def get_product_by_sku(request):
+    sku = request.GET.get('sku')
+
+    try:
+        product = Product.objects.get(sku=sku)
+
+        data = {
+            'material_code': product.material_code,
+            'name': product.name,
+            'price': product.selling_price,
+        }
+
+        return JsonResponse(data)
+
+    except Product.DoesNotExist:
+        return JsonResponse({'error': 'Not found'})

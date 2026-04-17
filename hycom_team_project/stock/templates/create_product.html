@@ -24,44 +24,77 @@
             <label>Material Code</label>
             {{ form.material_code }}
         </div>
+    
+    <!-- STYLE -->
+    <div class="col-md-3">
+        <label>Style</label>
+        <input list="style_list" name="style" class="form-control">
+        <datalist id="style_list">
+            <option value="Core">
+            <option value="Flexi">
+            <option value="Ethos">
+        </datalist>
+    </div>
 
-        <div class="col-md-3">
-            <label>Style</label>
-            {{ form.style }}
-        </div>
+    <!-- GENDER -->
+    <div class="col-md-3">
+        <label>Gender</label>
+        <input list="gender_list" name="gender" class="form-control">
+        <datalist id="gender_list">
+            <option value="Male">
+            <option value="Female">
+        </datalist>
+    </div>
 
-        <!-- ATTRIBUTES -->
-        <div class="col-md-3">
-            <label>Gender</label>
-            {{ form.gender }}
-        </div>
+    <!-- COLOR -->
+    <div class="col-md-3">
+        <label>Color</label>
+        <input list="color_list" name="color" class="form-control">
+        <datalist id="color_list">
+            <option value="Wine Red">
+            <option value="Hunter Green">
+            <option value="Ceil Blue">
+            <option value="Navy Blue">
+        </datalist>
+    </div>
 
-        <div class="col-md-3">
-            <label>Color</label>
-            {{ form.color }}
-        </div>
+    <!-- SIZE -->
+    <div class="col-md-3">
+        <label>Size</label>
+        <input list="size_list" name="size" class="form-control">
+        <datalist id="size_list">
+            <option value="XS">
+            <option value="S">
+            <option value="M">
+            <option value="L">
+            <option value="XL">
+            <option value="XXL">
+        </datalist>
+    </div>
 
-        <div class="col-md-3">
-            <label>Size</label>
-            {{ form.size }}
-        </div>
+    <!-- CATEGORY -->
+    <div class="col-md-3">
+        <label>Category</label>
+        <input list="category_list" name="category" class="form-control">
+        <datalist id="category_list">
+            <option value="Medical Scrubs">
+            <option value="Labcoats">
+            <option value="Doctor Coats">
+            <option value="Inner Scrubs">
+        </datalist>
+    </div>
 
-        <div class="col-md-3">
-            <label>Category</label>
-            {{ form.category }}
-        </div>
+    <!-- STOCK -->
+    <div class="col-md-3">
+        <label>Stock</label>
+        <input type="number" class="form-control" name="stock" min="0">
+    </div>
 
-        <!-- BUSINESS -->
-        <div class="col-md-3">
-            <label>Stock</label>
-            {{ form.stock }}
-        </div>
-
-        <div class="col-md-3">
-            <label>Selling Price</label>
-            {{ form.selling_price }}
-        </div>
-
+    <!-- PRICE -->
+    <div class="col-md-3">
+        <label>Selling Price</label>
+        {{ form.selling_price }}
+    </div>
         <!-- CHECKBOX (ALIGNED LIKE ORDER PAGE) -->
         <div class="col-md-3 mt-4 d-flex align-items-center">
             <div class="form-check">
@@ -74,6 +107,7 @@
 
     <div class="mt-4">
         <button type="submit" class="btn btn-success">Save Product</button>
+        <a href="/stock/products/" class="btn btn-secondary">Cancel</a>
     </div>
 
 </form>

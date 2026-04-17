@@ -65,6 +65,8 @@
                             {% endif %}
                         </td>
                         <td>{{ o.total_amount }}</td>
+                        <td><a href="/orders/edit/{{ o.id }}/" class="btn btn-warning btn-sm">Edit</a>
+                        <a href="/orders/delete/{{ o.id }}/" class="btn btn-danger btn-sm" onclick="return confirm('Delete this order?')">Delete</a></td>
                     </tr>
                     {% empty %}
                     <tr>

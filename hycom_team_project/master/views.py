@@ -9,6 +9,8 @@ from django.forms import formset_factory
 from .forms import OrderForm, OrderItemForm
 from django.db.models import Sum
 from django.contrib import messages
+from django.shortcuts import get_object_or_404
+
 
 def get_orders(request):
     if request.method == 'GET':
@@ -92,7 +94,65 @@ def create_order(request):
         
         
 
+def edit_order(request, pk):
 
+    order = get_object_or_404(Order, id=pk)
+
+    if request.method == 'POST':
+        order_form = OrderForm(request.POST, instance=order)
+        formset = OrderItemFormSet(request.POST, instance=order)
+
+        if order_form.is_valid() and formset.is_valid():
+
+            try:
+                with transaction.atomic():
+
+                    # 🔁 STEP 1: RESTORE OLD STOCK
+                    old_items = OrderItem.objects.filter(order=order)
+
+                    for item in old_items:
+                        product = item.product
+                        product.stock += item.quantity
+                        product.save()
+
+                    # ❌ delete old items
+                    old_items.delete()
+
+                    # 💾 STEP 2: SAVE ORDER
+                    order = order_form.save()
+
+                    # 🆕 STEP 3: SAVE NEW ITEMS
+                    items = formset.save(commit=False)
+
+                    for item in items:
+                        product = item.product
+                        qty = item.quantity
+
+                        # ❌ VALIDATION
+                        if product.stock < qty:
+                            raise Exception(f"Not enough stock for {product.name}")
+
+                        # ✅ DEDUCT NEW STOCK
+                        product.stock -= qty
+                        product.save()
+
+                        item.order = order
+                        item.save()
+
+                    messages.success(request, "Order updated successfully")
+                    return redirect('/orders/')
+
+            except Exception as e:
+                messages.error(request, str(e))
+
+    else:
+        order_form = OrderForm(instance=order)
+        formset = OrderItemForm(instance=order)
+
+    return render(request, 'create_order.html', {
+        'order_form': order_form,
+        'formset': formset
+    })
 
 def get_product_by_sku(request):
     sku = request.GET.get('sku')
@@ -140,9 +200,7 @@ def create_order_ui(request):
     
     
     
-from django.shortcuts import render
-from stock.models import Product
-from .models import Order
+
 
 
 def dashboard(request):
@@ -184,3 +242,22 @@ def order_list(request):
         'orders': orders,
         'query': query
     })
+    
+    
+
+def delete_order(request, pk):
+
+    order = get_object_or_404(Order, id=pk)
+
+    # 🔁 restore stock
+    items = OrderItem.objects.filter(order=order)
+
+    for item in items:
+        product = item.product
+        product.stock += item.quantity
+        product.save()
+
+    order.delete()
+
+    messages.success(request, "Order deleted successfully")
+    return redirect('/orders/')
