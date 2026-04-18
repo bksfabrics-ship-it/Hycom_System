@@ -85,3 +85,86 @@ def get_product_by_sku(request):
 
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Not found'})
+    
+    
+    
+import pandas as pd
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import Product
+
+REQUIRED_COLUMNS = [
+    'name', 'sku', 'material_code', 'style',
+    'gender', 'color', 'size', 'category',
+    'stock', 'selling_price'
+]
+
+
+def bulk_upload_products(request):
+
+    if request.method == 'POST' and request.FILES.get('file'):
+        file = request.FILES['file']
+
+        try:
+            # detect file type
+            if file.name.endswith('.csv'):
+                df = pd.read_csv(file)
+            else:
+                df = pd.read_excel(file)
+
+            # normalize columns
+            df.columns = [c.strip().lower() for c in df.columns]
+
+            # validate required columns
+            missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+            if missing:
+                messages.error(request, f"Missing columns: {', '.join(missing)}")
+                return redirect('/stock/products/upload/')
+
+            created, skipped, errors = 0, 0, []
+
+            for idx, row in df.iterrows():
+                try:
+                    sku = str(row['sku']).strip()
+
+                    # skip duplicates
+                    if Product.objects.filter(sku=sku).exists():
+                        skipped += 1
+                        continue
+
+                    Product.objects.create(
+                        name=str(row['name']).strip(),
+                        sku=sku,
+                        material_code=str(row['material_code']).strip(),
+                        style=str(row['style']).strip(),
+                        gender=str(row['gender']).strip(),
+                        color=str(row['color']).strip(),
+                        size=str(row['size']).strip(),
+                        category=str(row['category']).strip(),
+                        stock=int(row['stock']) if pd.notna(row['stock']) else 0,
+                        selling_price=float(row['selling_price']) if pd.notna(row['selling_price']) else 0,
+                        is_active=True
+                    )
+
+                    created += 1
+
+                except Exception as e:
+                    errors.append(f"Row {idx+2}: {str(e)}")
+
+            # messages
+            if created:
+                messages.success(request, f"{created} products uploaded successfully")
+            if skipped:
+                messages.warning(request, f"{skipped} duplicate SKUs skipped")
+            if errors:
+                messages.error(request, "Some rows failed. Check below.")
+
+            return render(request, 'bulk_upload_products.html', {
+                'errors': errors[:20]  # show first 20 errors
+            })
+
+        except Exception as e:
+            messages.error(request, f"Upload failed: {str(e)}")
+            return redirect('/stock/products/upload/')
+
+    return render(request, 'bulk_upload_products.html')
