@@ -5,6 +5,8 @@ from .models import Product
 from django.shortcuts import render, redirect
 from .forms import ProductForm
 from django.contrib import messages
+from django.http import HttpResponse
+import csv
 
 
 def create_product(request):
@@ -102,69 +104,120 @@ REQUIRED_COLUMNS = [
 
 def bulk_upload_products(request):
 
-    if request.method == 'POST' and request.FILES.get('file'):
-        file = request.FILES['file']
+    if request.method == 'POST':
 
-        try:
-            # detect file type
-            if file.name.endswith('.csv'):
-                df = pd.read_csv(file)
-            else:
-                df = pd.read_excel(file)
+        # =========================
+        # STEP 1 — PREVIEW
+        # =========================
+        if 'preview' in request.POST and request.FILES.get('file'):
 
-            # normalize columns
-            df.columns = [c.strip().lower() for c in df.columns]
+            file = request.FILES['file']
 
-            # validate required columns
-            missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
-            if missing:
-                messages.error(request, f"Missing columns: {', '.join(missing)}")
+            try:
+                # READ FILE
+                if file.name.endswith('.csv'):
+                    df = pd.read_csv(file)
+                else:
+                    df = pd.read_excel(file)
+
+                # CLEAN COLUMNS
+                df.columns = [c.strip().lower() for c in df.columns]
+
+                # VALIDATE COLUMNS
+                missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+                if missing:
+                    messages.error(request, f"Missing columns: {', '.join(missing)}")
+                    return redirect('/stock/products/upload/')
+
+                # SAVE IN SESSION (IMPORTANT)
+                request.session['upload_data'] = df.to_json()
+
+                # SEND PREVIEW (TOP 20 ROWS)
+                return render(request, 'bulk_upload_products.html', {
+                    'preview': df.head(20).to_dict(orient='records')
+                })
+
+            except Exception as e:
+                messages.error(request, f"Preview failed: {str(e)}")
                 return redirect('/stock/products/upload/')
 
-            created, skipped, errors = 0, 0, []
+        # =========================
+        # STEP 2 — CONFIRM SAVE
+        # =========================
+        if 'confirm' in request.POST:
 
-            for idx, row in df.iterrows():
-                try:
-                    sku = str(row['sku']).strip()
+            try:
+                df = pd.read_json(request.session.get('upload_data'))
 
-                    # skip duplicates
-                    if Product.objects.filter(sku=sku).exists():
-                        skipped += 1
-                        continue
+                created = 0
+                updated = 0
+                errors = []
 
-                    Product.objects.create(
-                        name=str(row['name']).strip(),
-                        sku=sku,
-                        material_code=str(row['material_code']).strip(),
-                        style=str(row['style']).strip(),
-                        gender=str(row['gender']).strip(),
-                        color=str(row['color']).strip(),
-                        size=str(row['size']).strip(),
-                        category=str(row['category']).strip(),
-                        stock=int(row['stock']) if pd.notna(row['stock']) else 0,
-                        selling_price=float(row['selling_price']) if pd.notna(row['selling_price']) else 0,
-                        is_active=True
-                    )
+                for idx, row in df.iterrows():
+                    try:
+                        sku = str(row['sku']).strip()
 
-                    created += 1
+                        product, created_flag = Product.objects.update_or_create(
+                            sku=sku,
+                            defaults={
+                                'name': str(row['name']).strip(),
+                                'material_code': str(row['material_code']).strip(),
+                                'style': str(row['style']).strip(),
+                                'gender': str(row['gender']).strip(),
+                                'color': str(row['color']).strip(),
+                                'size': str(row['size']).strip(),
+                                'category': str(row['category']).strip(),
+                                'stock': int(row['stock']) if pd.notna(row['stock']) else 0,
+                                'selling_price': float(row['selling_price']) if pd.notna(row['selling_price']) else 0,
+                                'is_active': True
+                            }
+                        )
 
-                except Exception as e:
-                    errors.append(f"Row {idx+2}: {str(e)}")
+                        if created_flag:
+                            created += 1
+                        else:
+                            updated += 1
 
-            # messages
-            if created:
-                messages.success(request, f"{created} products uploaded successfully")
-            if skipped:
-                messages.warning(request, f"{skipped} duplicate SKUs skipped")
-            if errors:
-                messages.error(request, "Some rows failed. Check below.")
+                    except Exception as e:
+                        errors.append(f"Row {idx + 2}: {str(e)}")
 
-            return render(request, 'bulk_upload_products.html', {
-                'errors': errors[:20]  # show first 20 errors
-            })
+                # SUCCESS MESSAGE
+                messages.success(request, f"{created} created, {updated} updated")
 
-        except Exception as e:
-            messages.error(request, f"Upload failed: {str(e)}")
-            return redirect('/stock/products/upload/')
+                if errors:
+                    messages.warning(request, f"{len(errors)} rows failed")
 
+                # CLEAR SESSION (GOOD PRACTICE)
+                request.session.pop('upload_data', None)
+
+                return redirect('/stock/products/')
+
+            except Exception as e:
+                messages.error(request, f"Upload failed: {str(e)}")
+                return redirect('/stock/products/upload/')
+
+    # DEFAULT LOAD
     return render(request, 'bulk_upload_products.html')
+
+
+
+
+
+def download_sample_products(request):
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="product_sample.csv"'
+
+    writer = csv.writer(response)
+
+    writer.writerow([
+        'name','sku','material_code','style','gender',
+        'color','size','category','stock','selling_price'
+    ])
+
+    writer.writerow([
+        'Flexi Scrub Top','HY-FLEXI-W-BL-XS','MC001','Flexi',
+        'Female','Blue','XS','Medical Scrubs','50','799'
+    ])
+
+    return response

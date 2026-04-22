@@ -72,6 +72,33 @@
         visibility: visible !important;
         opacity: 1 !important;
         }
+        .table th, .table td {
+        padding: 12px 14px;
+        vertical-align: middle;
+        white-space: nowrap;
+        }
+
+        .table thead {
+            background-color: #f8f9fa;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f1f5ff;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 2;
+        }
+        .table td:first-child,
+        .table th:first-child {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 1;
+        }
     </style>
 </head>
 

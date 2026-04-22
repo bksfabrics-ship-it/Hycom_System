@@ -6,6 +6,7 @@
 
 <div class="card p-4 shadow-sm">
 
+    <!-- UPLOAD + PREVIEW FORM -->
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
@@ -14,18 +15,61 @@
             <input type="file" name="file" class="form-control" required>
         </div>
 
-        <button type="submit" class="btn btn-success">Upload</button>
+        <button name="preview" class="btn btn-primary">Preview</button>
         <a href="/stock/products/" class="btn btn-secondary">Cancel</a>
     </form>
 
 </div>
 
+<!-- 🔥 PREVIEW TABLE -->
+{% if preview %}
+<div class="card p-4 shadow-sm mt-4">
+
+    <h4>Preview Data</h4>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped text-center">
+
+            <thead>
+                <tr>
+                    {% for key in preview.0.keys %}
+                        <th>{{ key }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for row in preview %}
+                <tr>
+                    {% for val in row.values %}
+                        <td>{{ val }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+    <!-- CONFIRM UPLOAD -->
+    <form method="post">
+        {% csrf_token %}
+        <button name="confirm" class="btn btn-success">
+            Confirm Upload
+        </button>
+        <a href="/stock/products/upload/" class="btn btn-secondary">Cancel</a>
+    </form>
+
+</div>
+{% endif %}
+
+<!-- ERRORS -->
 {% if errors %}
 <div class="mt-4 alert alert-danger">
     <strong>Errors:</strong>
     <ul>
         {% for e in errors %}
-        <li>{{ e }}</li>
+            <li>{{ e }}</li>
         {% endfor %}
     </ul>
 </div>

@@ -10,6 +10,10 @@ from .forms import OrderForm, OrderItemForm
 from django.db.models import Sum
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.db.models import Q, Prefetch, Sum, F
+import csv
+from django.http import HttpResponse
 
 
 def get_orders(request):
@@ -94,60 +98,53 @@ def create_order(request):
         
         
 
+def restore_old_stock(order):
+    old_items = OrderItem.objects.filter(order=order)
+
+    for item in old_items:
+        product = item.product
+        product.stock += item.quantity
+        product.save()
+
+    old_items.delete()
+
+
 def edit_order(request, pk):
 
-    order = get_object_or_404(Order, id=pk)
+    order = get_object_or_404(Order, pk=pk)
+
+    ItemFormSet = formset_factory(OrderItemForm, extra=0)
 
     if request.method == 'POST':
+
         order_form = OrderForm(request.POST, instance=order)
-        formset = OrderItemFormSet(request.POST, instance=order)
+        formset = ItemFormSet(request.POST)
 
         if order_form.is_valid() and formset.is_valid():
 
-            try:
-                with transaction.atomic():
+            old_status = order.status
 
-                    # 🔁 STEP 1: RESTORE OLD STOCK
-                    old_items = OrderItem.objects.filter(order=order)
+            with transaction.atomic():
 
-                    for item in old_items:
-                        product = item.product
-                        product.stock += item.quantity
-                        product.save()
+                order = order_form.save()
 
-                    # ❌ delete old items
-                    old_items.delete()
+                # ✅ CHECK STATUS CHANGE
+                if old_status != 'return_arrived' and order.status == 'return_arrived':
 
-                    # 💾 STEP 2: SAVE ORDER
-                    order = order_form.save()
+                    for form in formset:
+                        if form.cleaned_data:
 
-                    # 🆕 STEP 3: SAVE NEW ITEMS
-                    items = formset.save(commit=False)
+                            product = form.cleaned_data['product']
+                            qty = form.cleaned_data['quantity']
 
-                    for item in items:
-                        product = item.product
-                        qty = item.quantity
+                            product.stock += qty
+                            product.save()
 
-                        # ❌ VALIDATION
-                        if product.stock < qty:
-                            raise Exception(f"Not enough stock for {product.name}")
-
-                        # ✅ DEDUCT NEW STOCK
-                        product.stock -= qty
-                        product.save()
-
-                        item.order = order
-                        item.save()
-
-                    messages.success(request, "Order updated successfully")
-                    return redirect('/orders/')
-
-            except Exception as e:
-                messages.error(request, str(e))
+            return redirect('/orders/')
 
     else:
         order_form = OrderForm(instance=order)
-        formset = OrderItemForm(instance=order)
+        formset = ItemFormSet()
 
     return render(request, 'create_order.html', {
         'order_form': order_form,
@@ -155,15 +152,19 @@ def edit_order(request, pk):
     })
 
 def get_product_by_sku(request):
-    sku = request.GET.get('sku')
+    sku = request.GET.get('sku', '').strip()
 
     try:
-        product = Product.objects.get(sku=sku)
+        product = Product.objects.get(sku__iexact=sku)  # ✅ case-insensitive
 
-        return JsonResponse({"id": product.id, "name": product.name, "price": float(product.selling_price or 0)})
-
+        return JsonResponse({
+            'id': product.id,
+            'name': product.name,
+            'price': float(product.selling_price)
+        })
+        print("SKU RECEIVED:", sku)
     except Product.DoesNotExist:
-        return JsonResponse({"error": "Not found"}, status=404)
+        return JsonResponse({'error': 'Product not found'})
     
 
 
@@ -179,15 +180,59 @@ def create_order_ui(request):
 
             with transaction.atomic():
 
+                # 1) Save order
                 order = order_form.save()
 
+                # 2) Save items
                 for form in formset:
-                    if form.cleaned_data:
-                        item = form.save(commit=False)
-                        item.order = order
-                        item.save()
+                    data = form.cleaned_data
+                    if not data or not data.get('product') or not data.get('quantity'):
+                        continue
 
-            return redirect('/orders-ui/')
+                    obj = form.save(commit=False)
+                    obj.order = order
+                    obj.save()
+
+                # 3) Calculate totals (GST inclusive pricing)
+                amount = 0
+                gst_total = 0
+
+                for it in order.orderitem_set.all():
+                    total_price = it.quantity * it.price
+                    base = total_price / 1.05
+                    gst = total_price - base
+
+                    amount += base
+                    gst_total += gst
+
+                # 4) Rounding
+                order.amount = round(amount, 2)
+                order.gst = round(gst_total, 2)
+
+                # 5) GST split
+                state = (order.state or '').strip().lower()
+                if state in ['tamil nadu', 'tn']:
+                    order.cgst = round(order.gst / 2, 2)
+                    order.sgst = round(order.gst / 2, 2)
+                    order.igst = 0
+                else:
+                    order.igst = round(order.gst, 2)
+                    order.cgst = 0
+                    order.sgst = 0
+
+                # 6) Final total (inclusive)
+                order.total_amount = round(order.amount + order.gst, 2)
+
+                order.save()
+
+                # 7) Return stock (create-time only; handle edit separately)
+                if order.status == 'return_arrived':
+                    for it in order.orderitem_set.all():
+                        product = it.product
+                        product.stock += it.quantity
+                        product.save()
+
+            return redirect('/order_list/')
 
     else:
         order_form = OrderForm()
@@ -222,25 +267,27 @@ def dashboard(request):
     })
     
     
-from django.db.models import Q
-from .models import Order
+
 
 
 def order_list(request):
-    query = request.GET.get('q')
+    search  = request.GET.get('q')
+    status = request.GET.get('status')
+    portal = request.GET.get('portal')
 
-    if query:
-        orders = Order.objects.filter(
-            Q(order_number__icontains=query) |
-            Q(customer_name__icontains=query) |
-            Q(portal__icontains=query)
-        ).order_by('-id')
-    else:
-        orders = Order.objects.all().order_by('-id')
+    orders = Order.objects.all().order_by('-id').prefetch_related(Prefetch('orderitem_set', queryset=OrderItem.objects.select_related('product')))
+    
+    if status:
+        orders = orders.filter(status=status)
+
+    if portal:
+        orders = orders.filter(portal=portal)
+
+    if search:
+        orders = orders.filter(order_number__icontains=search)
 
     return render(request, 'order_list.html', {
         'orders': orders,
-        'query': query
     })
     
     
@@ -261,3 +308,45 @@ def delete_order(request, pk):
 
     messages.success(request, "Order deleted successfully")
     return redirect('/orders/')
+
+
+
+def export_orders(request):
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="orders.csv"'
+
+    writer = csv.writer(response)
+
+    # HEADER
+    writer.writerow([
+        'Order No', 'Customer', 'Invoice No', 'Invoice Date', 'Ship Date',
+        'Portal', 'Status', 'State', 'State Code',
+        'Qty', 'Amount', 'Fulfilment', 'B2B', 'GST',
+        'SKU', 'Material Code'
+    ])
+
+    orders = Order.objects.all().prefetch_related('orderitem_set')
+
+    for o in orders:
+        for item in o.orderitem_set.all():
+            writer.writerow([
+                o.order_number,
+                o.customer_name,
+                o.invoice_number,
+                o.invoice_date,
+                o.ship_date,
+                o.portal,
+                o.status,
+                o.state,
+                o.state_code,
+                item.quantity,
+                item.price,
+                o.fulfilment,
+                o.is_b2b,
+                o.gst_number,
+                item.product.sku,
+                item.product.material_code
+            ])
+
+    return response

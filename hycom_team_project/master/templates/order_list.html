@@ -5,6 +5,140 @@
 <div class="container-fluid">
 
     <!-- HEADER -->
+    <div class="d-flex justify-content-between mb-3">
+        <h3>Orders</h3>
+        <a href="/api/orders-ui/" class="btn btn-primary">+ Create Order</a>
+        <a href="/api/order-export/" class="btn btn-success">Export</a>
+    </div>
+
+    <!-- FILTERS -->
+    <form method="get" class="row g-2 mb-3">
+
+        <div class="col-md-3">
+            <input type="text" name="q" placeholder="Search Order No"
+                   class="form-control" value="{{ request.GET.q }}">
+        </div>
+
+        <div class="col-md-3">
+            <select name="status" class="form-control">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="shipped">Shipped</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="return_in_transit">Return In Transit</option>
+                <option value="return_arrived">Return Arrived</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <select name="portal" class="form-control">
+                <option value="">All Portal</option>
+                <option>Amazon</option>
+                <option>Flipkart</option>
+                <option>Self</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <button class="btn btn-dark w-100">Filter</button>
+        </div>
+
+    </form>
+
+    <!-- TABLE -->
+    <div class="card p-3 shadow-sm">
+
+        <div style="overflow-x:auto; max-height:70vh;">
+
+        <table class="table table-bordered table-hover align-middle text-nowrap">
+            <thead>
+                <tr>
+                    <th>Order No</th>
+                    <th>Customer</th>
+                    <th>Invoice No</th>
+                    <th>Invoice Date</th>
+                    <th>Ship Date</th>
+                    <th>Portal</th>
+                    <th>Status</th>
+                    <th>State</th>
+                    <th>State Code</th>
+                    <th>Qty</th>
+                    <th>Amount</th>
+                    <th>Fulfilment</th>
+                    <th>B2B</th>
+                    <th>GST</th>
+                    <th>SKU</th>
+                    <th>Material Code</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for o in orders %}
+
+                    {% for item in o.orderitem_set.all %}
+                    <tr>
+                        <td>{{ o.order_number }}</td>
+                        <td>{{ o.customer_name }}</td>
+                        <td>{{ o.invoice_number }}</td>
+                        <td>{{ o.invoice_date }}</td>
+                        <td>{{ o.ship_date }}</td>
+                        <td>{{ o.portal }}</td>
+
+                        <td>
+                            <span class="badge bg-info">
+                                {{ o.get_status_display}}
+                            </span>
+                        </td>
+
+                        <td>{{ o.state }}</td>
+                        <td>{{ o.state_code }}</td>
+
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.price }}</td>
+
+                        <td>{{ o.fulfilment }}</td>
+
+                        <td>
+                            {% if o.is_b2b %} Yes {% else %} No {% endif %}
+                        </td>
+
+                        <td>{{ o.gst_number }}</td>
+
+                        <td>{{ item.product.sku }}</td>
+                        <td>{{ item.product.material_code }}</td>
+
+                        <td>
+                            <a href="/orders/edit/{{ o.id }}/" class="btn btn-sm btn-warning">Edit</a>
+                            <a href="/orders/delete/{{ o.id }}/" class="btn btn-sm btn-danger">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                {% endfor %}
+            </tbody>
+
+        </table>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+
+
+
+
+
+{% comment %} {% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Orders</h3>
         <a href="/api/orders-ui/" class="btn btn-primary">
@@ -82,4 +216,4 @@
 
 </div>
 
-{% endblock %}
+{% endblock %} {% endcomment %}

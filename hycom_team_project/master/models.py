@@ -1,5 +1,6 @@
 from django.db import models
 from stock.models import Product
+from django.utils import timezone
 
 class Order(models.Model):
 
@@ -17,15 +18,18 @@ class Order(models.Model):
     ]
 
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('in_gate', 'In Gate'),
-        ('dispatched', 'Dispatched'),
-    ]
+        ('Pending', 'Pending'),
+        ('Shipped', 'Shipped'),
+        ('cancelled', 'Cancelled'),
+        ('Return In Transit', 'Return In Transit'),
+        ('Return Arrived', 'Return Arrived'),]
 
     # Basic Details
     portal = models.CharField(max_length=20, choices=PORTAL_CHOICES)
     order_number = models.CharField(max_length=100)
     customer_name = models.CharField(max_length=200)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    state_code = models.CharField(max_length=10, blank=True, null=True)
 
     # Invoice Details
     invoice_number = models.CharField(max_length=100)
@@ -48,6 +52,9 @@ class Order(models.Model):
     # Financials
     amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     gst = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    cgst = models.FloatField(default=0)
+    sgst = models.FloatField(default=0)
+    igst = models.FloatField(default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True)
 
     # Misc
@@ -56,7 +63,9 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         # Auto total calculation
-        self.total_amount = self.amount + self.gst
+        # self.total_amount = self.amount + self.gst
+        if self.status == 'shipped' and not self.ship_date:
+            self.ship_date = timezone.now().date()
 
         # Validation
         if self.is_b2b and not self.gst_number:

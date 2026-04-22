@@ -51,6 +51,20 @@
             <label>Customer Name</label>
             {{ order_form.customer_name }}
         </div>
+        <div class="col-md-3">
+            <label>State</label>
+            {{ order_form.state }}
+        </div>
+
+        <div class="col-md-3">
+            <label>State Code</label>
+            {{ order_form.state_code }}
+        </div>
+
+        <div class="col-md-3">
+            <label>Order Status</label>
+            {{ order_form.status }}
+        </div>
 
     </div>
 
@@ -102,35 +116,34 @@
     <br><br>
 
     <button type="submit" class="btn btn-success">Save</button>
-    <a href="/orders/" class="btn btn-secondary">Cancel</a>
+    <a href="/api/order_list/" class="btn btn-secondary">Cancel</a>
 </form>
 
 <!-- JAVASCRIPT -->
 <script>
-    document.addEventListener('change', function(e) {
+document.addEventListener('change', function(e) {
 
     if (e.target.classList.contains('sku-input')) {
 
         let row = e.target.closest('.item-row');
         let sku = e.target.value;
 
-        fetch(`/stock/api/get-product-by-sku/?sku=${sku}`)
+        fetch(`/api/get-product-by-sku/?sku=${sku}`)
         .then(res => res.json())
         .then(data => {
 
-            if (!data.error) {
+            if (data.id) {
 
-                // Set product dropdown
                 let productDropdown = row.querySelector('select');
-                for (let option of productDropdown.options) {
-                    if (option.text.includes(sku)) {
-                        option.selected = true;
-                    }
-                }
 
-                // Set price
+                // ✅ MAIN FIX
+                productDropdown.value = data.id;
+
+                // SET PRICE
                 let priceInput = row.querySelector('input[name$="price"]');
-                priceInput.value = data.price;
+                if (priceInput) {
+                    priceInput.value = data.price;
+                }
 
             } else {
                 alert("Invalid SKU");
