@@ -14,6 +14,7 @@ from django.http import JsonResponse
 from django.db.models import Q, Prefetch, Sum, F
 import csv
 from django.http import HttpResponse
+from decimal import Decimal
 
 
 def get_orders(request):
@@ -47,54 +48,54 @@ def get_orders(request):
 
 
 
-def create_order(request):
+# def create_order(request):
 
-    if request.method == 'POST':
-        order_form = OrderForm(request.POST)
-        formset = OrderItemForm(request.POST)
+#     if request.method == 'POST':
+#         order_form = OrderForm(request.POST)
+#         formset = OrderItemForm(request.POST)
 
-        if order_form.is_valid() and formset.is_valid():
+#         if order_form.is_valid() and formset.is_valid():
 
-            try:
-                with transaction.atomic():
+#             try:
+#                 with transaction.atomic():
 
-                    order = order_form.save()
+#                     order = order_form.save()
 
-                    items = formset.save(commit=False)
+#                     items = formset.save(commit=False)
 
-                    for item in items:
-                        product = item.product
-                        qty = item.quantity
+#                     for item in items:
+#                         product = item.product
+#                         qty = item.quantity
 
-                        # ❌ VALIDATION: prevent negative stock
-                        if product.stock < qty:
-                            raise Exception(f"Not enough stock for {product.name}")
+#                         # ❌ VALIDATION: prevent negative stock
+#                         if product.stock < qty:
+#                             raise Exception(f"Not enough stock for {product.name}")
 
-                        # ✅ Reduce stock
-                        product.stock -= qty
-                        product.save()
+#                         # ✅ Reduce stock
+#                         product.stock -= qty
+#                         product.save()
 
-                        item.order = order
-                        item.save()
-                messages.success(request, "Order saved successfully")
-                return redirect('/orders/')
+#                         item.order = order
+#                         item.save()
+#                 messages.success(request, "Order saved successfully")
+#                 return redirect('/orders/')
 
-            except Exception as e:
-                messages.error(request, "Something went wrong")
-                return render(request, 'create_order.html', {
-                    'order_form': order_form,
-                    'formset': formset,
-                    'error': str(e)
-                })
+#             except Exception as e:
+#                 messages.error(request, "Something went wrong")
+#                 return render(request, 'create_order.html', {
+#                     'order_form': order_form,
+#                     'formset': formset,
+#                     'error': str(e)
+#                 })
 
-    else:
-        order_form = OrderForm()
-        formset = OrderItemForm()
+#     else:
+#         order_form = OrderForm()
+#         formset = OrderItemForm()
 
-    return render(request, 'create_order.html', {
-        'order_form': order_form,
-        'formset': formset
-    })
+#     return render(request, 'create_order.html', {
+#         'order_form': order_form,
+#         'formset': formset
+#     })
         
         
 
@@ -140,7 +141,7 @@ def edit_order(request, pk):
                             product.stock += qty
                             product.save()
 
-            return redirect('/orders/')
+            return redirect('/api/order_list/')
 
     else:
         order_form = OrderForm(instance=order)
@@ -165,7 +166,7 @@ def get_product_by_sku(request):
         print("SKU RECEIVED:", sku)
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'})
-    
+
 
 
 def create_order_ui(request):
@@ -178,61 +179,102 @@ def create_order_ui(request):
 
         if order_form.is_valid() and formset.is_valid():
 
-            with transaction.atomic():
+            try:
+                with transaction.atomic():
 
-                # 1) Save order
-                order = order_form.save()
-
-                # 2) Save items
-                for form in formset:
-                    data = form.cleaned_data
-                    if not data or not data.get('product') or not data.get('quantity'):
-                        continue
-
-                    obj = form.save(commit=False)
-                    obj.order = order
-                    obj.save()
-
-                # 3) Calculate totals (GST inclusive pricing)
-                amount = 0
-                gst_total = 0
-
-                for it in order.orderitem_set.all():
-                    total_price = it.quantity * it.price
-                    base = total_price / 1.05
-                    gst = total_price - base
-
-                    amount += base
-                    gst_total += gst
-
-                # 4) Rounding
-                order.amount = round(amount, 2)
-                order.gst = round(gst_total, 2)
-
-                # 5) GST split
-                state = (order.state or '').strip().lower()
-                if state in ['tamil nadu', 'tn']:
-                    order.cgst = round(order.gst / 2, 2)
-                    order.sgst = round(order.gst / 2, 2)
-                    order.igst = 0
-                else:
-                    order.igst = round(order.gst, 2)
+                    # ✅ STEP 1: Create order (NOT saved fully yet)
+                    order = order_form.save(commit=False)
+                    order.amount = 0
+                    order.gst = 0
                     order.cgst = 0
                     order.sgst = 0
+                    order.igst = 0
+                    order.total_amount = 0
+                    order.save()   # MUST save before using FK
 
-                # 6) Final total (inclusive)
-                order.total_amount = round(order.amount + order.gst, 2)
+                    valid_items = 0
 
-                order.save()
+                    # ✅ STEP 2: Save items with validation
+                    for form in formset:
+                        data = form.cleaned_data
 
-                # 7) Return stock (create-time only; handle edit separately)
-                if order.status == 'return_arrived':
-                    for it in order.orderitem_set.all():
-                        product = it.product
-                        product.stock += it.quantity
+                        if not data or not data.get('product') or not data.get('quantity'):
+                            continue
+
+                        product = data['product']
+                        qty = data['quantity']
+                        price = data.get('price') or product.selling_price
+
+                        # 🔴 STOCK VALIDATION
+                        if product.stock < qty:
+                            raise Exception(f"Not enough stock for {product.name}")
+
+                        # ✅ Reduce stock
+                        product.stock -= qty
                         product.save()
 
-            return redirect('/order_list/')
+                        item = form.save(commit=False)
+                        item.order = order
+                        item.price = price
+                        item.save()
+
+                        valid_items += 1
+
+                    # ❌ No items
+                    if valid_items == 0:
+                        raise Exception("At least one valid item is required")
+
+                    # ✅ STEP 3: Calculate totals
+                    amount = Decimal('0')
+                    gst_total = Decimal('0')
+
+                    for it in order.items.all():
+                        total = it.quantity * it.price  # already Decimal
+
+                        base = total / Decimal('1.05')
+                        gst = total - base
+
+                        amount += base
+                        gst_total += gst
+
+                    order.amount = round(amount, 2)
+                    order.gst = round(gst_total, 2)
+
+                    # ✅ STEP 4: GST Split
+                    state = (order.state or '').strip().lower()
+
+                    if state in ['tamil nadu', 'tn']:
+                        order.cgst = round(order.gst / 2, 2)
+                        order.sgst = round(order.gst / 2, 2)
+                        order.igst = 0
+                    else:
+                        order.igst = round(order.gst, 2)
+                        order.cgst = 0
+                        order.sgst = 0
+
+                    # ✅ STEP 5: Final total
+                    order.total_amount = round(order.amount + order.gst, 2)
+
+                    order.save()
+
+                    # ✅ STEP 6: Return stock logic
+                    if order.status == 'return_arrived':
+                        for it in order.items.all():
+                            product = it.product
+                            product.stock += it.quantity
+                            product.save()
+
+                messages.success(request, "Order saved successfully")
+                return redirect('/api/order_list/')
+
+            except Exception as e:
+                messages.error(request, f"Error: {str(e)}")
+
+        else:
+            messages.error(request, "Please fill all required fields correctly")
+
+            print("ORDER FORM ERRORS:", order_form.errors)
+            print("FORMSET ERRORS:", formset.errors)
 
     else:
         order_form = OrderForm()
@@ -242,9 +284,6 @@ def create_order_ui(request):
         'order_form': order_form,
         'formset': formset
     })
-    
-    
-    
 
 
 
@@ -275,7 +314,7 @@ def order_list(request):
     status = request.GET.get('status')
     portal = request.GET.get('portal')
 
-    orders = Order.objects.all().order_by('-id').prefetch_related(Prefetch('orderitem_set', queryset=OrderItem.objects.select_related('product')))
+    orders = Order.objects.all().order_by('-id').prefetch_related(Prefetch('items', queryset=OrderItem.objects.select_related('product')))
     
     if status:
         orders = orders.filter(status=status)
@@ -307,7 +346,7 @@ def delete_order(request, pk):
     order.delete()
 
     messages.success(request, "Order deleted successfully")
-    return redirect('/orders/')
+    return redirect('/api/order_list/')
 
 
 
@@ -326,10 +365,10 @@ def export_orders(request):
         'SKU', 'Material Code'
     ])
 
-    orders = Order.objects.all().prefetch_related('orderitem_set')
+    orders = Order.objects.all().prefetch_related('items')
 
     for o in orders:
-        for item in o.orderitem_set.all():
+        for item in o.items.all():
             writer.writerow([
                 o.order_number,
                 o.customer_name,

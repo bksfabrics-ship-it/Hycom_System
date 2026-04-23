@@ -76,7 +76,7 @@
             <tbody>
                 {% for o in orders %}
 
-                    {% for item in o.orderitem_set.all %}
+                    {% for item in o.items.all %}
                     <tr>
                         <td>{{ o.order_number }}</td>
                         <td>{{ o.customer_name }}</td>
@@ -109,8 +109,8 @@
                         <td>{{ item.product.material_code }}</td>
 
                         <td>
-                            <a href="/orders/edit/{{ o.id }}/" class="btn btn-sm btn-warning">Edit</a>
-                            <a href="/orders/delete/{{ o.id }}/" class="btn btn-sm btn-danger">Delete</a>
+                            <a href="/api/orders/edit/{{ o.id }}/" class="btn btn-sm btn-warning">Edit</a>
+                            <a href="/api/orders/delete/{{ o.id }}/" class="btn btn-sm btn-danger">Delete</a>
                         </td>
                     </tr>
                     {% endfor %}

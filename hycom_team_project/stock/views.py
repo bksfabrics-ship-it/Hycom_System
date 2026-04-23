@@ -104,99 +104,92 @@ REQUIRED_COLUMNS = [
 
 def bulk_upload_products(request):
 
-    if request.method == 'POST':
+    if request.method == 'POST' and request.FILES.get('file'):
+        file = request.FILES['file']
 
-        # =========================
-        # STEP 1 — PREVIEW
-        # =========================
-        if 'preview' in request.POST and request.FILES.get('file'):
+        try:
+            # READ FILE
+            if file.name.endswith('.csv'):
+                df = pd.read_csv(file)
+            else:
+                df = pd.read_excel(file)
 
-            file = request.FILES['file']
+            df.columns = [c.strip().lower() for c in df.columns]
 
-            try:
-                # READ FILE
-                if file.name.endswith('.csv'):
-                    df = pd.read_csv(file)
-                else:
-                    df = pd.read_excel(file)
+            # VALIDATE
+            missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+            if missing:
+                messages.error(request, f"Missing columns: {', '.join(missing)}")
+                return redirect('/stock/products/upload/')
 
-                # CLEAN COLUMNS
-                df.columns = [c.strip().lower() for c in df.columns]
+            # ✅ PREVIEW MODE
+            if 'preview' in request.POST:
 
-                # VALIDATE COLUMNS
-                missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
-                if missing:
-                    messages.error(request, f"Missing columns: {', '.join(missing)}")
-                    return redirect('/stock/products/upload/')
+                preview_data = df.head(50).to_dict(orient='records')
 
-                # SAVE IN SESSION (IMPORTANT)
-                request.session['upload_data'] = df.to_json()
+                # 🔴 FIND DUPLICATE SKUs
+                duplicate_skus = df['sku'][df['sku'].duplicated()].unique().tolist()
 
-                # SEND PREVIEW (TOP 20 ROWS)
+                # 🟡 FIND MISSING DATA ROWS
+                missing_rows = []
+                for i, row in df.iterrows():
+                    if row.isnull().any():
+                        missing_rows.append(i)
+
+                # SAVE DATA
+                request.session['upload_data'] = df.to_dict(orient='records')
+
                 return render(request, 'bulk_upload_products.html', {
-                    'preview': df.head(20).to_dict(orient='records')
+                    'preview': preview_data,
+                    'duplicate_skus': duplicate_skus,
+                    'missing_rows': missing_rows
                 })
 
-            except Exception as e:
-                messages.error(request, f"Preview failed: {str(e)}")
+            # ✅ FINAL UPLOAD
+            data = request.session.get('upload_data')
+
+            if not data:
+                messages.error(request, "No preview data found. Please upload again.")
                 return redirect('/stock/products/upload/')
 
-        # =========================
-        # STEP 2 — CONFIRM SAVE
-        # =========================
-        if 'confirm' in request.POST:
+            created, updated, errors = 0, 0, []
 
-            try:
-                df = pd.read_json(request.session.get('upload_data'))
+            for idx, row in enumerate(data):
+                try:
+                    product, created_flag = Product.objects.update_or_create(
+                        sku=str(row['sku']).strip(),
+                        defaults={
+                            'name': str(row['name']).strip(),
+                            'material_code': str(row['material_code']).strip(),
+                            'style': str(row['style']).strip(),
+                            'gender': str(row['gender']).strip(),
+                            'color': str(row['color']).strip(),
+                            'size': str(row['size']).strip(),
+                            'category': str(row['category']).strip(),
+                            'stock': int(row.get('stock', 0)),
+                            'selling_price': float(row.get('selling_price', 0)),
+                            'is_active': True
+                        }
+                    )
 
-                created = 0
-                updated = 0
-                errors = []
+                    if created_flag:
+                        created += 1
+                    else:
+                        updated += 1
 
-                for idx, row in df.iterrows():
-                    try:
-                        sku = str(row['sku']).strip()
+                except Exception as e:
+                    errors.append(f"Row {idx+2}: {str(e)}")
 
-                        product, created_flag = Product.objects.update_or_create(
-                            sku=sku,
-                            defaults={
-                                'name': str(row['name']).strip(),
-                                'material_code': str(row['material_code']).strip(),
-                                'style': str(row['style']).strip(),
-                                'gender': str(row['gender']).strip(),
-                                'color': str(row['color']).strip(),
-                                'size': str(row['size']).strip(),
-                                'category': str(row['category']).strip(),
-                                'stock': int(row['stock']) if pd.notna(row['stock']) else 0,
-                                'selling_price': float(row['selling_price']) if pd.notna(row['selling_price']) else 0,
-                                'is_active': True
-                            }
-                        )
+            messages.success(request, f"{created} created, {updated} updated")
 
-                        if created_flag:
-                            created += 1
-                        else:
-                            updated += 1
+            return render(request, 'bulk_upload_products.html', {
+                'errors': errors[:20]
+            })
 
-                    except Exception as e:
-                        errors.append(f"Row {idx + 2}: {str(e)}")
+        except Exception as e:
+            messages.error(request, f"Upload failed: {str(e)}")
+            return redirect('/stock/products/upload/')
 
-                # SUCCESS MESSAGE
-                messages.success(request, f"{created} created, {updated} updated")
-
-                if errors:
-                    messages.warning(request, f"{len(errors)} rows failed")
-
-                # CLEAR SESSION (GOOD PRACTICE)
-                request.session.pop('upload_data', None)
-
-                return redirect('/stock/products/')
-
-            except Exception as e:
-                messages.error(request, f"Upload failed: {str(e)}")
-                return redirect('/stock/products/upload/')
-
-    # DEFAULT LOAD
     return render(request, 'bulk_upload_products.html')
 
 

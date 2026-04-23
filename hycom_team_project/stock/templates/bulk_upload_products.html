@@ -6,7 +6,6 @@
 
 <div class="card p-4 shadow-sm">
 
-    <!-- UPLOAD + PREVIEW FORM -->
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
@@ -16,60 +15,51 @@
         </div>
 
         <button name="preview" class="btn btn-primary">Preview</button>
+        <button type="submit" class="btn btn-success">Upload</button>
         <a href="/stock/products/" class="btn btn-secondary">Cancel</a>
     </form>
 
 </div>
 
-<!-- 🔥 PREVIEW TABLE -->
+<!-- PREVIEW TABLE -->
 {% if preview %}
-<div class="card p-4 shadow-sm mt-4">
-
-    <h4>Preview Data</h4>
-
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped text-center">
-
+<div class="mt-4 card p-3">
+    <h5>Preview (First 20 rows)</h5>
+    <div style="overflow-x:auto;">
+        <table class="table table-bordered table-sm">
             <thead>
                 <tr>
                     {% for key in preview.0.keys %}
-                        <th>{{ key }}</th>
+                    <th>{{ key }}</th>
                     {% endfor %}
                 </tr>
             </thead>
-
             <tbody>
                 {% for row in preview %}
-                <tr>
+                <tr
+                    {% if row.sku in duplicate_skus %}
+                        style="background-color:#ffcccc;"   <!-- RED -->
+                    {% elif forloop.counter0 in missing_rows %}
+                        style="background-color:#fff3cd;"   <!-- YELLOW -->
+                    {% endif %}
+                >
                     {% for val in row.values %}
-                        <td>{{ val }}</td>
+                    <td>{{ val }}</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
             </tbody>
-
         </table>
     </div>
-
-    <!-- CONFIRM UPLOAD -->
-    <form method="post">
-        {% csrf_token %}
-        <button name="confirm" class="btn btn-success">
-            Confirm Upload
-        </button>
-        <a href="/stock/products/upload/" class="btn btn-secondary">Cancel</a>
-    </form>
-
 </div>
 {% endif %}
 
 <!-- ERRORS -->
 {% if errors %}
 <div class="mt-4 alert alert-danger">
-    <strong>Errors:</strong>
     <ul>
         {% for e in errors %}
-            <li>{{ e }}</li>
+        <li>{{ e }}</li>
         {% endfor %}
     </ul>
 </div>

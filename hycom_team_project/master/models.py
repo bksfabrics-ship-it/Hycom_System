@@ -50,12 +50,12 @@ class Order(models.Model):
     state_code = models.CharField(max_length=10)
 
     # Financials
-    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    gst = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    cgst = models.FloatField(default=0)
-    sgst = models.FloatField(default=0)
-    igst = models.FloatField(default=0)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True)
+    amount = models.FloatField(null=True, blank=True)
+    gst = models.FloatField(null=True, blank=True)
+    cgst = models.FloatField(null=True, blank=True)
+    sgst = models.FloatField(null=True, blank=True)
+    igst = models.FloatField(null=True, blank=True)
+    total_amount = models.FloatField(null=True, blank=True)
 
     # Misc
     remarks = models.TextField(null=True, blank=True)
