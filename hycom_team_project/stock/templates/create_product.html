@@ -2,6 +2,99 @@
 
 {% block content %}
 
+<h3>
+    {% if product %} Edit Product {% else %} Add Product {% endif %}
+</h3>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="row g-3">
+
+        <!-- BASIC INFO -->
+        <div class="col-md-3">
+            <label>Product Name</label>
+            {{ form.name }}
+        </div>
+
+        <div class="col-md-3">
+            <label>SKU</label>
+            {{ form.sku }}
+        </div>
+
+        <div class="col-md-3">
+            <label>Material Code</label>
+            {{ form.material_code }}
+        </div>
+
+        <!-- STYLE -->
+        <div class="col-md-3">
+            <label>Style</label>
+            {{ form.style }}
+        </div>
+
+        <!-- GENDER -->
+        <div class="col-md-3">
+            <label>Gender</label>
+            {{ form.gender }}
+        </div>
+
+        <!-- COLOR -->
+        <div class="col-md-3">
+            <label>Color</label>
+            {{ form.color }}
+        </div>
+
+        <!-- SIZE -->
+        <div class="col-md-3">
+            <label>Size</label>
+            {{ form.size }}
+        </div>
+
+        <!-- CATEGORY -->
+        <div class="col-md-3">
+            <label>Category</label>
+            {{ form.category }}
+        </div>
+
+        <!-- STOCK -->
+        <div class="col-md-3">
+            <label>Stock</label>
+            {{ form.stock }}
+        </div>
+
+        <!-- PRICE -->
+        <div class="col-md-3">
+            <label>Selling Price</label>
+            {{ form.selling_price }}
+        </div>
+
+        <!-- ACTIVE -->
+        <div class="col-md-3 mt-4 d-flex align-items-center">
+            <div class="form-check">
+                {{ form.is_active }}
+                <label class="form-check-label ms-2">Active</label>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-success">
+            {% if product %} Update Product {% else %} Save Product {% endif %}
+        </button>
+        <a href="/stock/products/" class="btn btn-secondary">Cancel</a>
+    </div>
+
+</form>
+
+{% endblock %}
+
+
+{% comment %} {% extends 'base.html' %}
+
+{% block content %}
+
 <h3>Add Product</h3>
 
 <form method="post">
@@ -112,4 +205,7 @@
 
 </form>
 
-{% endblock %}
+{% endblock %} {% endcomment %}
+
+
+

@@ -52,12 +52,14 @@ def edit_product(request, pk):
         form = ProductForm(request.POST, instance=product)
         if form.is_valid():
             form.save()
-            messages.success(request, "Product updated")
+            messages.success(request, "Product updated successfully")
             return redirect('/stock/products/')
+        else:
+            messages.error(request, "Please fix errors")
     else:
         form = ProductForm(instance=product)
 
-    return render(request, 'create_product.html', {'form': form})
+    return render(request, 'create_product.html', {'form': form, 'product': product})
 
 
 def delete_product(request, pk):

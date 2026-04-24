@@ -45,7 +45,7 @@ class Order(models.Model):
 
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-
+    is_stock_updated = models.BooleanField(default=False)
     # Location
     state_code = models.CharField(max_length=10)
 
@@ -54,7 +54,7 @@ class Order(models.Model):
     gst = models.FloatField(null=True, blank=True)
     cgst = models.FloatField(null=True, blank=True)
     sgst = models.FloatField(null=True, blank=True)
-    igst = models.FloatField(null=True, blank=True)
+    igst = models.FloatField(null=True, blank=True) 
     total_amount = models.FloatField(null=True, blank=True)
 
     # Misc

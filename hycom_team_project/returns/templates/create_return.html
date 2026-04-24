@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container">
+
+    <h3>Create Return</h3>
+
+    <div class="card p-4 shadow-sm">
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <label>Order</label>
+                    {{ form.order }}
+                </div>
+
+                <div class="col-md-4">
+                    <label>Product</label>
+                    {{ form.product }}
+                </div>
+
+                <div class="col-md-4">
+                    <label>Quantity</label>
+                    {{ form.quantity }}
+                </div>
+
+                <div class="col-md-4">
+                    <label>Condition</label>
+                    {{ form.condition }}
+                </div>
+
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success">Save Return</button>
+                <a href="/api/order_list/" class="btn btn-secondary">Cancel</a>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- ✅ ADD JS HERE -->
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+
+    let orderDropdown = document.getElementById("id_order");
+    let productDropdown = document.getElementById("id_product");
+
+    function loadProducts(orderId){
+
+        if (!orderId) return;
+
+        fetch(`/returns/api/get-order-products/?order_id=${orderId}`)
+        .then(res => res.json())
+        .then(data => {
+
+            productDropdown.innerHTML = "<option value=''>Select Product</option>";
+
+            data.forEach(item => {
+                let option = document.createElement("option");
+                option.value = item.id;
+                option.text = item.name;
+                productDropdown.appendChild(option);
+            });
+
+        });
+    }
+
+    // ✅ On change
+    orderDropdown.addEventListener("change", function(){
+        loadProducts(this.value);
+    });
+
+    // ✅ On page load (IMPORTANT)
+    if (orderDropdown.value){
+        loadProducts(orderDropdown.value);
+    }
+
+});
+</script>
+
+{% endblock %}

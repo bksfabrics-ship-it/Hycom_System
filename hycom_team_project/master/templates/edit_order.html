@@ -2,7 +2,19 @@
 
 {% block content %}
 
-<h3>Create Order</h3>
+<h3>Edit Order</h3>
+
+{% if order_form.errors %}
+    <div class="alert alert-danger">
+        {{ order_form.errors }}
+    </div>
+{% endif %}
+
+{% if formset.errors %}
+    <div class="alert alert-danger">
+        {{ formset.errors }}
+    </div>
+{% endif %}
 
 <form method="post">
     {% csrf_token %}
@@ -13,16 +25,19 @@
         <div class="col-md-3">
             <label>Portal</label>
             {{ order_form.portal }}
+            {{ order_form.portal.errors }}
         </div>
 
         <div class="col-md-3">
             <label>Fulfilment</label>
             {{ order_form.fulfilment }}
+            {{ order_form.fulfilment.errors }}
         </div>
 
         <div class="col-md-3 mt-4">
             <div class="form-check">
                 {{ order_form.is_b2b }}
+                {{ order_form.is_b2b.errors }}
                 <label class="form-check-label ms-2">Is B2B?</label>
             </div>
         </div>
@@ -30,40 +45,48 @@
         <div class="col-md-3" id="gst_field" style="display:none;">
             <label>GST Number</label>
             {{ order_form.gst_number }}
+            {{ order_form.gst_number.errors }}
         </div>
 
         <div class="col-md-3">
             <label>Invoice Number</label>
             {{ order_form.invoice_number }}
+            {{ order_form.invoice_number.errors }}
         </div>
 
         <div class="col-md-3">
             <label>Invoice Date</label>
             {{ order_form.invoice_date }}
+            {{ order_form.invoice_date.errors }}
         </div>
 
         <div class="col-md-3">
             <label>Order Number</label>
             {{ order_form.order_number }}
+            {{ order_form.order_number.errors }}
         </div>
 
         <div class="col-md-3">
             <label>Customer Name</label>
             {{ order_form.customer_name }}
+            {{ order_form.customer_name.errors }}
         </div>
         <div class="col-md-3">
             <label>State</label>
             {{ order_form.state }}
+            {{ order_form.state.errors }}
         </div>
 
         <div class="col-md-3">
             <label>State Code</label>
             {{ order_form.state_code }}
+            {{ order_form.state_code.errors }}
         </div>
 
         <div class="col-md-3">
             <label>Order Status</label>
             {{ order_form.status }}
+            {{ order_form.status.errors }}
         </div>
 
     </div>
@@ -80,22 +103,26 @@
 
             <div class="col-md-3">
                 <label>SKU</label>
-                <input type="text" class="form-control sku-input">
+                {{ form.sku }}
+                {{ form.sku.errors }}
             </div>
 
             <div class="col-md-3">
                 <label>Product</label>
                 {{ form.product }}
+                {{ form.product.errors }}
             </div>
 
             <div class="col-md-2">
                 <label>Quantity</label>
                 {{ form.quantity }}
+                {{ form.quantity.errors }}
             </div>
 
             <div class="col-md-2">
                 <label>Price</label>
                 {{ form.price }}
+                {{ form.price.errors }}
             </div>
 
             <div class="col-md-2 d-flex align-items-end">
@@ -115,7 +142,8 @@
 
     <br><br>
 
-    <button type="submit" class="btn btn-success">Save</button>
+    <button type="submit" class="btn btn-success">Update Order</button>
+    {% comment %} <a href="/api/order_list/" class="btn btn-secondary">Update Order</a> {% endcomment %}
     <a href="/api/order_list/" class="btn btn-secondary">Cancel</a>
 
     <div class="mt-3">
@@ -198,7 +226,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        fulfilment.value = "";
     }
 
     function toggleGST() {

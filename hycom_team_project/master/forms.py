@@ -3,6 +3,7 @@ from .models import Order, OrderItem, Product
 
 
 class OrderForm(forms.ModelForm):
+    fulfilment = forms.ChoiceField(choices=Order.FULFILMENT_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}))
     class Meta:
         model = Order
 
@@ -11,6 +12,7 @@ class OrderForm(forms.ModelForm):
 
         widgets = {
             'portal': forms.Select(attrs={'class': 'form-control', 'required': True}),
+            'fulfilment': forms.Select(attrs={'class': 'form-control'}),
             'invoice_number': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
             'order_number': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
             'customer_name': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
@@ -34,7 +36,15 @@ class OrderForm(forms.ModelForm):
 
 class OrderItemForm(forms.ModelForm):
     product = forms.ModelChoiceField(queryset=Product.objects.all(), widget=forms.Select(attrs={'class': 'form-control product-dropdown'}))
+    sku = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control sku-input'}))
 
     class Meta:
         model = OrderItem
         fields = ['product', 'quantity', 'price']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # ✅ Populate SKU when editing
+        if self.instance and self.instance.pk:
+            self.fields['sku'].initial = self.instance.product.sku

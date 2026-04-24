@@ -7,8 +7,10 @@
     <!-- HEADER -->
     <div class="d-flex justify-content-between mb-3">
         <h3>Orders</h3>
-        <a href="/api/orders-ui/" class="btn btn-primary">+ Create Order</a>
-        <a href="/api/order-export/" class="btn btn-success">Export</a>
+        <div>
+            <a href="/api/orders-ui/" class="btn btn-primary">+ Create Order</a>
+            <a href="/api/order-export/" class="btn btn-success">Export</a>
+        </div>
     </div>
 
     <!-- FILTERS -->
@@ -48,172 +50,116 @@
     <!-- TABLE -->
     <div class="card p-3 shadow-sm">
 
-        <div style="overflow-x:auto; max-height:70vh;">
+        <div style="overflow-x:auto;">
 
-        <table class="table table-bordered table-hover align-middle text-nowrap">
-            <thead>
-                <tr>
-                    <th>Order No</th>
-                    <th>Customer</th>
-                    <th>Invoice No</th>
-                    <th>Invoice Date</th>
-                    <th>Ship Date</th>
-                    <th>Portal</th>
-                    <th>Status</th>
-                    <th>State</th>
-                    <th>State Code</th>
-                    <th>Qty</th>
-                    <th>Amount</th>
-                    <th>Fulfilment</th>
-                    <th>B2B</th>
-                    <th>GST</th>
-                    <th>SKU</th>
-                    <th>Material Code</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
+            <table class="table table-bordered table-hover align-middle text-nowrap">
 
-            <tbody>
-                {% for o in orders %}
-
-                    {% for item in o.items.all %}
-                    <tr>
-                        <td>{{ o.order_number }}</td>
-                        <td>{{ o.customer_name }}</td>
-                        <td>{{ o.invoice_number }}</td>
-                        <td>{{ o.invoice_date }}</td>
-                        <td>{{ o.ship_date }}</td>
-                        <td>{{ o.portal }}</td>
-
-                        <td>
-                            <span class="badge bg-info">
-                                {{ o.get_status_display}}
-                            </span>
-                        </td>
-
-                        <td>{{ o.state }}</td>
-                        <td>{{ o.state_code }}</td>
-
-                        <td>{{ item.quantity }}</td>
-                        <td>{{ item.price }}</td>
-
-                        <td>{{ o.fulfilment }}</td>
-
-                        <td>
-                            {% if o.is_b2b %} Yes {% else %} No {% endif %}
-                        </td>
-
-                        <td>{{ o.gst_number }}</td>
-
-                        <td>{{ item.product.sku }}</td>
-                        <td>{{ item.product.material_code }}</td>
-
-                        <td>
-                            <a href="/api/orders/edit/{{ o.id }}/" class="btn btn-sm btn-warning">Edit</a>
-                            <a href="/api/orders/delete/{{ o.id }}/" class="btn btn-sm btn-danger">Delete</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-
-                {% endfor %}
-            </tbody>
-
-        </table>
-        </div>
-    </div>
-
-</div>
-
-{% endblock %}
-
-
-
-
-
-
-
-{% comment %} {% extends 'base.html' %}
-
-{% block content %}
-
-<div class="container-fluid">
-
-    <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>Orders</h3>
-        <a href="/api/orders-ui/" class="btn btn-primary">
-            + Create Order
-        </a>
-    </div>
-
-    <!-- CARD -->
-    <div class="card shadow-sm p-3">
-
-        <!-- SEARCH -->
-        <form method="get" class="mb-3">
-            <div class="row">
-                <div class="col-md-4">
-                    <input type="text"
-                           name="q"
-                           class="form-control"
-                           placeholder="Search Order No / Customer / Portal"
-                           value="{{ query }}">
-                </div>
-                <div class="col-md-2">
-                    <button class="btn btn-dark">Search</button>
-                </div>
-            </div>
-        </form>
-
-        <!-- TABLE -->
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover text-center align-middle">
-
-                <thead class="table-light">
+                <thead>
                     <tr>
                         <th>Order No</th>
-                        <th>Invoice No</th>
-                        <th>Date</th>
                         <th>Customer</th>
+                        <th>Invoice</th>
+                        <th>Date</th>
                         <th>Portal</th>
                         <th>Status</th>
+                        <th>State</th>
+                        <th>Qty</th>
                         <th>Total</th>
+                        <th>SKU</th>
+                        <th>Material Code</th>
+                        <th>Returns</th>
+                        <th>Returned Qty</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     {% for o in orders %}
                     <tr>
+
                         <td>{{ o.order_number }}</td>
+                        <td>{{ o.customer_name }}</td>
                         <td>{{ o.invoice_number }}</td>
                         <td>{{ o.invoice_date }}</td>
-                        <td>{{ o.customer_name }}</td>
                         <td>{{ o.portal }}</td>
+
                         <td>
-                            {% if o.status == "Pending" %}
+                            {% if o.status == 'shipped' %}
+                                <span class="badge bg-success">Shipped</span>
+                            {% elif o.status == 'pending' %}
                                 <span class="badge bg-warning text-dark">Pending</span>
-                            {% elif o.status == "Dispatched" %}
-                                <span class="badge bg-success">Dispatched</span>
+                            {% elif o.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                            {% elif o.status == 'return_arrived' %}
+                                <span class="badge bg-dark">Returned</span>
                             {% else %}
                                 <span class="badge bg-secondary">{{ o.status }}</span>
                             {% endif %}
                         </td>
+
+                        <td>{{ o.state }}</td>
+
+                        <!-- TOTAL QTY -->
+                        <td>
+                            {% for item in o.items.all %}
+                                {{ item.quantity }}<br>
+                            {% endfor %}
+                        </td>
+
                         <td>{{ o.total_amount }}</td>
-                        <td><a href="/orders/edit/{{ o.id }}/" class="btn btn-warning btn-sm">Edit</a>
-                        <a href="/orders/delete/{{ o.id }}/" class="btn btn-danger btn-sm" onclick="return confirm('Delete this order?')">Delete</a></td>
+
+                        <!-- SKU -->
+                        <td>
+                            {% for item in o.items.all %}
+                                {{ item.product.sku }}<br>
+                            {% endfor %}
+                        </td>
+
+                        <!-- MATERIAL -->
+                        <td>
+                            {% for item in o.items.all %}
+                                {{ item.product.material_code }}<br>
+                            {% endfor %}
+                        </td>
+
+                        <!-- RETURNS -->
+                        <td>
+                            {% if o.return_count > 0 %}
+                                <span class="badge bg-warning">Yes</span>
+                            {% else %}
+                                <span class="badge bg-success">No</span>
+                            {% endif %}
+                        </td>
+
+                        <td>{{ o.return_qty }}</td>
+
+                        <!-- ACTIONS -->
+                        <td>
+                            <a href="/api/orders/edit/{{ o.id }}/" class="btn btn-sm btn-primary">Edit</a>
+                            <a href="/api/orders/delete/{{ o.id }}/" class="btn btn-sm btn-danger"
+                               onclick="return confirm('Delete this order?')">Delete</a>
+
+                            {% if o.status == 'return_arrived' or o.status == 'cancelled' %}
+                                <a href="/returns/create/?order_id={{ o.id }}"
+                                   class="btn btn-sm btn-warning">
+                                   Return
+                                </a>
+                            {% endif %}
+                        </td>
+
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7">No orders found</td>
+                        <td colspan="14" class="text-center">No orders found</td>
                     </tr>
                     {% endfor %}
                 </tbody>
 
             </table>
-        </div>
 
+        </div>
     </div>
 
 </div>
 
-{% endblock %} {% endcomment %}
+{% endblock %}
