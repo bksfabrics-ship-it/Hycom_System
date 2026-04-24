@@ -153,7 +153,7 @@ def edit_order(request, pk):
                     order = order_form.save(commit=False)
 
                     # ✅ AUTO SHIP DATE
-                    if order.status == 'shipped' and not order.ship_date:
+                    if order.status == 'Shipped' and not order.ship_date:
                         order.ship_date = date.today()
 
                     order.save()
@@ -217,7 +217,7 @@ def edit_order(request, pk):
                     order.save()
 
                     # ✅ STEP 6: RETURN / CANCEL STOCK LOGIC
-                    if order.status in ['return_arrived', 'cancelled']:
+                    if order.status in ['Return Arrived', 'Cancelled']:
 
                         for item in OrderItem.objects.filter(order=order):
                             product = item.product

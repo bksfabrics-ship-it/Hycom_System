@@ -100,7 +100,8 @@
 
         {% for form in formset %}
         <div class="row g-3 mb-3 border p-3 rounded item-row">
-
+            
+            {{ form.id }}  <!-- ✅ REQUIRED -->
             <div class="col-md-3">
                 <label>SKU</label>
                 {{ form.sku }}
