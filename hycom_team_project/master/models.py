@@ -46,6 +46,7 @@ class Order(models.Model):
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     is_stock_updated = models.BooleanField(default=False)
+    stock_restored = models.BooleanField(default=False)
     # Location
     state_code = models.CharField(max_length=10)
 
@@ -60,12 +61,15 @@ class Order(models.Model):
     # Misc
     remarks = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_replacement = models.BooleanField(default=False)
+    replacement_for = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
+
 
     def save(self, *args, **kwargs):
         # Auto total calculation
         # self.total_amount = self.amount + self.gst
-        if self.status == 'shipped' and not self.ship_date:
-            self.ship_date = timezone.now().date()
+        # if self.status == 'shipped' and not self.ship_date:
+        #     self.ship_date = timezone.now().date()
 
         # Validation
         if self.is_b2b and not self.gst_number:
@@ -88,18 +92,18 @@ class OrderItem(models.Model):
 
     def save(self, *args, **kwargs):
 
-        # Handle update case (avoid double deduction)
-        if self.pk:
-            old = OrderItem.objects.get(pk=self.pk)
-            self.product.stock += old.quantity
+        # # Handle update case (avoid double deduction)
+        # if self.pk:
+        #     old = OrderItem.objects.get(pk=self.pk)
+        #     self.product.stock += old.quantity
 
-        # Check stock
-        if self.product.stock < self.quantity:
-            raise ValueError("Not enough stock")
+        # # Check stock
+        # if self.product.stock < self.quantity:
+        #     raise ValueError("Not enough stock")
 
-        # Reduce stock
-        self.product.stock -= self.quantity
-        self.product.save()
+        # # Reduce stock
+        # self.product.stock -= self.quantity
+        # self.product.save()
 
         super().save(*args, **kwargs)
 

@@ -88,6 +88,18 @@
             {{ order_form.status }}
             {{ order_form.status.errors }}
         </div>
+                <div id="replacement_section" style="display:none;">
+            <label>Is Replacement?</label>
+            <select name="is_replacement" class="form-control">
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+            </select>
+
+            <div id="replacement_order_box" style="display:none;">
+                <label>Replacement Order ID</label>
+                <input type="text" name="replacement_order_id" class="form-control">
+            </div>
+        </div>
 
     </div>
 
@@ -153,11 +165,16 @@
         {% if order_form.instance.pk %}
 
             <!-- Show only when status is return/cancel -->
-            {% if order_form.instance.status == 'return_arrived' or order_form.instance.status == 'cancelled' %}
+            {% if order_form.instance.status == 'Return Arrived' %}
 
                 <a href="/returns/create/?order_id={{ order_form.instance.id }}"
                 class="btn btn-warning">
                 Create Return
+                </a>
+            {% elif order_form.instance.status == 'Cancelled' %}
+                <a href="/returns/create/?order_id={{ order_form.instance.id }}"
+                class="btn btn-danger">
+                Process Cancellation
                 </a>
 
             {% endif %}
@@ -282,6 +299,29 @@ function removeRow(btn) {
         totalForms.value = container.children.length;
     }
 }
+
+document.getElementById("id_status").addEventListener("change", function() {
+
+    let status = this.value;
+    let section = document.getElementById("replacement_section");
+
+    if (status === "Return Arrived") {
+        section.style.display = "block";
+    } else {
+        section.style.display = "none";
+    }
+});
+
+document.querySelector("[name='is_replacement']").addEventListener("change", function() {
+
+    let box = document.getElementById("replacement_order_box");
+
+    if (this.value === "yes") {
+        box.style.display = "block";
+    } else {
+        box.style.display = "none";
+    }
+});
 
 </script>
 

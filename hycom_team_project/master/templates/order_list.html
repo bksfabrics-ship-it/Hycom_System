@@ -60,6 +60,7 @@
                         <th>Customer</th>
                         <th>Invoice</th>
                         <th>Date</th>
+                        <th>Ship Date</th>
                         <th>Portal</th>
                         <th>Status</th>
                         <th>State</th>
@@ -81,6 +82,7 @@
                         <td>{{ o.customer_name }}</td>
                         <td>{{ o.invoice_number }}</td>
                         <td>{{ o.invoice_date }}</td>
+                        <td>{{ o.ship_date }}</td>
                         <td>{{ o.portal }}</td>
 
                         <td>
@@ -139,10 +141,15 @@
                             <a href="/api/orders/delete/{{ o.id }}/" class="btn btn-sm btn-danger"
                                onclick="return confirm('Delete this order?')">Delete</a>
 
-                            {% if o.status == 'return_arrived' or o.status == 'cancelled' %}
+                            {% if o.status == 'Return Arrived'%}
                                 <a href="/returns/create/?order_id={{ o.id }}"
                                    class="btn btn-sm btn-warning">
                                    Return
+                                </a>
+                            {% elif o.status == 'Cancelled' %}
+                                <a href="/returns/create/?order_id={{ o.id }}"
+                                   class="btn btn-sm btn-danger">
+                                   Process Cancellation
                                 </a>
                             {% endif %}
                         </td>

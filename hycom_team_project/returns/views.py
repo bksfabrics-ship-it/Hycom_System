@@ -2,62 +2,90 @@ from django.shortcuts import render
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from .models import ReturnItem
-
-
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from .forms import ReturnItemForm
+from master.models import Order
+from django.http import JsonResponse
+from master.models import OrderItem
+from .models import Return, ReturnItem
+from django.forms import formset_factory
+
 
 def create_return(request):
 
     order_id = request.GET.get('order_id')
+    order = get_object_or_404(Order, id=order_id)
+
+    ReturnItemFormSet = formset_factory(ReturnItemForm, extra=3)
 
     if request.method == 'POST':
-        form = ReturnItemForm(request.POST)
+        formset = ReturnItemFormSet(request.POST, form_kwargs={'order': order})
+    else:
+        formset = ReturnItemFormSet(form_kwargs={'order': order})
 
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Return recorded successfully")
-            return redirect('/api/order_list/')
+    if formset.is_valid():
+
+        # ✅ CREATE RETURN
+        return_obj = Return.objects.create(
+            order=order,
+            type='cancel' if order.status == 'Cancelled' else 'return'
+        )
+
+        for form in formset:
+            data = form.cleaned_data
+
+            if not data:
+                continue
+
+            product = data.get('product')
+            qty = data.get('quantity')
+            condition = data.get('condition')
+
+            if not product or not qty:
+                continue
+
+            # ❗ VALIDATION: prevent over-return
+            ordered_qty = order.items.get(product=product).quantity
+
+            already_returned = sum(
+                item.quantity for item in ReturnItem.objects.filter(
+                    return_obj__order=order,
+                    product=product
+                )
+            )
+
+            if qty + already_returned > ordered_qty:
+                raise Exception(f"Return qty exceeds ordered for {product.name}")
+
+            # ✅ SAVE ITEM
+            item = form.save(commit=False)
+            item.return_obj = return_obj
+            item.save()
+
+            # ✅ STOCK LOGIC
+            if condition == 'good' and not item.is_stock_added:
+
+                product.stock += qty
+                product.save()
+
+                item.is_stock_added = True
+                item.save()
+
+        messages.success(request, "Return/Cancellation processed successfully")
+        return redirect('/api/order_list/')
 
     else:
-        form = ReturnItemForm()
+        formset = ReturnItemFormSet()
 
-        # ✅ Prefill order
-        if order_id:
-            form.fields['order'].initial = order_id
-
-    return render(request, 'create_return.html', {'form': form})
-
+    return render(request, 'create_return.html', {
+        'formset': formset,
+        'order': order
+    })
 
 
 
-def add_return_to_stock(request, return_id):
 
-    return_item = get_object_or_404(ReturnItem, id=return_id)
-
-    if return_item.condition != 'good':
-        messages.error(request, "Item is not in good condition")
-        return redirect('/api/order_list/')
-
-    if return_item.is_stock_added:
-        messages.warning(request, "Stock already added")
-        return redirect('/api/order_list/')
-
-    product = return_item.product
-    product.stock += return_item.quantity
-    product.save()
-
-    return_item.is_stock_added = True
-    return_item.save()
-
-    messages.success(request, "Stock added successfully")
-
-    return redirect('/api/order_list/')
-
-
-from django.http import JsonResponse
-from master.models import OrderItem
 
 def get_order_products(request):
 

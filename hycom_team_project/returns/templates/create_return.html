@@ -2,41 +2,70 @@
 
 {% block content %}
 
+{% if order %}
+    <h5>Order: {{ order.order_number }}</h5>
+
+    <div class="mb-3">
+        <strong>Items in this order:</strong><br>
+        {% for item in order.items.all %}
+            {{ item.product.name }} ({{ item.quantity }}) <br>
+        {% endfor %}
+    </div>
+{% endif %}
+
 <div class="container">
 
-    <h3>Create Return</h3>
+    <h3>Create Return / Cancellation</h3>
 
     <div class="card p-4 shadow-sm">
 
         <form method="post">
             {% csrf_token %}
 
-            <div class="row g-3">
+            <!-- ✅ FORMSET MANAGEMENT -->
+            {{ formset.management_form }}
 
-                <div class="col-md-4">
-                    <label>Order</label>
-                    {{ form.order }}
-                </div>
+            <div id="return-items">
 
-                <div class="col-md-4">
-                    <label>Product</label>
-                    {{ form.product }}
-                </div>
+                {% for form in formset %}
+                <div class="row g-3 mb-3 border p-3 rounded item-row">
 
-                <div class="col-md-4">
-                    <label>Quantity</label>
-                    {{ form.quantity }}
-                </div>
+                    <div class="col-md-4">
+                        <label>Product</label>
+                        {{ form.product }}
+                        {{ form.product.errors }}
+                    </div>
 
-                <div class="col-md-4">
-                    <label>Condition</label>
-                    {{ form.condition }}
+                    <div class="col-md-3">
+                        <label>Quantity</label>
+                        {{ form.quantity }}
+                        {{ form.quantity.errors }}
+                    </div>
+
+                    <div class="col-md-3">
+                        <label>Condition</label>
+                        {{ form.condition }}
+                        {{ form.condition.errors }}
+                    </div>
+
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-danger w-100" onclick="removeRow(this)">
+                            Remove
+                        </button>
+                    </div>
+
                 </div>
+                {% endfor %}
 
             </div>
 
+            <!-- ✅ ADD ROW -->
+            <button type="button" class="btn btn-primary mt-2" onclick="addRow()">
+                + Add Item
+            </button>
+
             <div class="mt-4">
-                <button type="submit" class="btn btn-success">Save Return</button>
+                <button type="submit" class="btn btn-success">Save</button>
                 <a href="/api/order_list/" class="btn btn-secondary">Cancel</a>
             </div>
 
@@ -46,44 +75,48 @@
 
 </div>
 
-<!-- ✅ ADD JS HERE -->
+<!-- ✅ JAVASCRIPT -->
 <script>
-document.addEventListener("DOMContentLoaded", function(){
 
-    let orderDropdown = document.getElementById("id_order");
-    let productDropdown = document.getElementById("id_product");
+// ADD ROW
+function addRow() {
 
-    function loadProducts(orderId){
+    let container = document.getElementById('return-items');
+    let totalForms = document.getElementById('id_form-TOTAL_FORMS');
 
-        if (!orderId) return;
+    let currentCount = parseInt(totalForms.value);
+    let firstRow = document.querySelector('.item-row');
 
-        fetch(`/returns/api/get-order-products/?order_id=${orderId}`)
-        .then(res => res.json())
-        .then(data => {
+    let newRow = firstRow.cloneNode(true);
 
-            productDropdown.innerHTML = "<option value=''>Select Product</option>";
-
-            data.forEach(item => {
-                let option = document.createElement("option");
-                option.value = item.id;
-                option.text = item.name;
-                productDropdown.appendChild(option);
-            });
-
-        });
-    }
-
-    // ✅ On change
-    orderDropdown.addEventListener("change", function(){
-        loadProducts(this.value);
+    // clear values
+    newRow.querySelectorAll('input, select').forEach(el => {
+        el.value = '';
     });
 
-    // ✅ On page load (IMPORTANT)
-    if (orderDropdown.value){
-        loadProducts(orderDropdown.value);
-    }
+    // update form index
+    newRow.innerHTML = newRow.innerHTML.replace(/form-(\d+)-/g, `form-${currentCount}-`);
 
-});
+    container.appendChild(newRow);
+
+    totalForms.value = currentCount + 1;
+}
+
+
+// REMOVE ROW
+function removeRow(btn) {
+
+    let row = btn.closest('.item-row');
+    let container = document.getElementById('return-items');
+
+    if (container.children.length > 1) {
+        row.remove();
+
+        let totalForms = document.getElementById('id_form-TOTAL_FORMS');
+        totalForms.value = container.children.length;
+    }
+}
+
 </script>
 
 {% endblock %}

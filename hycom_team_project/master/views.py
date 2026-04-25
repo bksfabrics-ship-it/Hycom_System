@@ -11,11 +11,36 @@ from django.db.models import Sum
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
-from django.db.models import Q, Prefetch, Sum, F
+from django.db.models import Q, Prefetch, Sum, F, Count
 import csv
 from django.http import HttpResponse
 from decimal import Decimal
 from returns.models import ReturnItem
+from django.forms import modelformset_factory
+from django.db import transaction
+from datetime import date
+from returns.models import Return
+
+
+
+def update_stock_for_order(order, reverse=False):
+    """
+    reverse=True → add stock back
+    reverse=False → deduct stock
+    """
+
+    for item in order.items.all():
+        product = item.product
+
+        if reverse:
+            product.stock += item.quantity
+        else:
+            if product.stock < item.quantity:
+                raise Exception(f"Not enough stock for {product.name}")
+            product.stock -= item.quantity
+
+        product.save()
+
 
 
 def get_orders(request):
@@ -111,13 +136,6 @@ def restore_old_stock(order):
     old_items.delete()
 
 
-from django.forms import modelformset_factory
-from django.db import transaction
-from datetime import date
-
-from django.forms import modelformset_factory
-from django.db import transaction
-from datetime import date
 
 def edit_order(request, pk):
 
@@ -143,86 +161,76 @@ def edit_order(request, pk):
                 with transaction.atomic():
 
                     old_status = order.status
+                    old_ship_date = order.ship_date
 
-                    # ✅ STEP 1: RESTORE OLD STOCK (VERY IMPORTANT)
-                    for item in queryset:
-                        item.product.stock += item.quantity
-                        item.product.save()
-
-                    # ✅ STEP 2: SAVE ORDER
+                    # ✅ SAVE ORDER (commit=False)
                     order = order_form.save(commit=False)
 
-                    # ✅ AUTO SHIP DATE
-                    if order.status == 'Shipped' and not order.ship_date:
+                    # ✅ SHIP DATE FIX
+                    if not order.ship_date:
+                        order.ship_date = old_ship_date
+
+                    if order.status == 'Shipped' and not old_ship_date:
                         order.ship_date = date.today()
 
+                    # if order.status == 'Return In Transit':
+                        
+                    # ✅ REPLACEMENT LOGIC
+                    if order.status == 'Return Arrived':
+
+                        is_replacement = (request.POST.get("is_replacement") or "").lower()
+
+                        if is_replacement == "yes":
+
+                            replacement_id = (request.POST.get("replacement_order_id") or "").strip()
+
+                            if not replacement_id:
+                                raise Exception("Replacement Order ID is required")
+
+                            try:
+                                replacement_order = Order.objects.get(order_number=replacement_id)
+                            except Order.DoesNotExist:
+                                raise Exception("Invalid Replacement Order ID")
+
+                            if replacement_order.id == order.id:
+                                raise Exception("Order cannot replace itself")
+
+                            order.is_replacement = True
+                            order.replacement_for = replacement_order
+
+                        else:
+                            order.is_replacement = False
+                            order.replacement_for = None
+
+                    else:
+                        order.is_replacement = False
+                        order.replacement_for = None
+
+                    # ✅ SAVE ORDER ONCE
                     order.save()
 
-                    # ✅ STEP 3: SAVE FORMSET (handles add/update/delete)
+                    # ✅ HANDLE ITEMS (NO STOCK LOGIC HERE)
                     items = formset.save(commit=False)
 
-                    # handle deleted items
                     for obj in formset.deleted_objects:
                         obj.delete()
 
-                    # reset totals
-                    amount = 0
-                    gst_total = 0
-
-                    # ✅ STEP 4: PROCESS ITEMS
                     for item in items:
-
                         product = item.product
-                        qty = item.quantity
                         price = item.price or product.selling_price
-
-                        # 🔴 STOCK VALIDATION
-                        if product.stock < qty:
-                            raise Exception(f"Not enough stock for {product.name}")
-
-                        # ✅ REDUCE STOCK
-                        # product.stock -= qty
-                        # product.save()
 
                         item.order = order
                         item.price = price
                         item.save()
 
-                        # ✅ GST CALCULATION (Decimal safe)
-                        total = qty * price
-                        base = total / Decimal('1.05')
-                        gst = total - base
-
-                        amount += base
-                        gst_total += gst
-
-                    # ✅ STEP 5: SAVE CALCULATIONS
-                    order.amount = round(amount, 2)
-                    order.gst = round(gst_total, 2)
-
-                    # GST SPLIT
-                    state = (order.state or '').lower()
-
-                    if state in ['tamil nadu', 'tn']:
-                        order.cgst = round(order.gst / 2, 2)
-                        order.sgst = round(order.gst / 2, 2)
-                        order.igst = 0
-                    else:
-                        order.igst = round(order.gst, 2)
-                        order.cgst = 0
-                        order.sgst = 0
-
-                    order.total_amount = round(order.amount + order.gst, 2)
-
-                    order.save()
-
-                    # ✅ STEP 6: RETURN / CANCEL STOCK LOGIC
-                    if order.status in ['Return Arrived', 'Cancelled']:
-
-                        for item in OrderItem.objects.filter(order=order):
-                            product = item.product
-                            product.stock += item.quantity
-                            product.save()
+                    already_processed = Return.objects.filter(order=order).exists()
+                    # ✅ REDIRECT ONLY IF STATUS CHANGED
+                    if old_status != order.status:
+                        if order.status in ['Return Arrived', 'Cancelled']:
+                            if already_processed:
+                                messages.warning(request, "Return/Cancellation already processed")
+                                return redirect('/api/order_list/')
+                            return redirect(f'/returns/create/?order_id={order.id}')
 
                     messages.success(request, "Order updated successfully")
                     return redirect('/api/order_list/')
@@ -231,12 +239,12 @@ def edit_order(request, pk):
                 messages.error(request, str(e))
 
         else:
+            print("ORDER ERR:", order_form.errors)
+            print("FORMSET ERR:", formset.errors)
             messages.error(request, "Please fix form errors")
 
     else:
         order_form = OrderForm(instance=order)
-
-        # ✅ CORRECT WAY (IMPORTANT)
         formset = ItemFormSet(queryset=queryset)
 
     return render(request, 'edit_order.html', {
@@ -304,8 +312,8 @@ def create_order_ui(request):
                                 raise Exception(f"Not enough stock for {product.name}")
 
                             # ✅ Reduce stock
-                            # product.stock -= qty
-                            # product.save()
+                            product.stock -= qty
+                            product.save()
 
                         item = form.save(commit=False)
                         item.order = order
@@ -420,12 +428,20 @@ def order_list(request):
     if search:
         orders = orders.filter(order_number__icontains=search)
 
-     # ✅ attach return info
-    for order in orders:
-        returns = ReturnItem.objects.filter(order=order)
+    returns_data = ReturnItem.objects.values('return_obj__order') \
+        .annotate(
+            return_count=Count('id'),
+            return_qty=Sum('quantity')
+        )
 
-        order.return_count = returns.count()
-        order.return_qty = returns.aggregate(total=Sum('quantity'))['total'] or 0
+    returns_map = {
+        r['return_obj__order']: r for r in returns_data
+    }
+
+    for order in orders:
+        data = returns_map.get(order.id, {})
+        order.return_count = data.get('return_count', 0)
+        order.return_qty = data.get('return_qty', 0)
 
     return render(request, 'order_list.html', {
         'orders': orders,
@@ -440,10 +456,13 @@ def delete_order(request, pk):
     # 🔁 restore stock
     items = OrderItem.objects.filter(order=order)
 
-    for item in items:
-        product = item.product
-        product.stock += item.quantity
-        product.save()
+    already_restored = ReturnItem.objects.filter(return_obj__order=order).exists()
+
+    if not already_restored:
+        for item in items:
+            product = item.product
+            product.stock += item.quantity
+            product.save()
 
     order.delete()
 

@@ -4,11 +4,12 @@ from .models import Order, OrderItem, Product
 
 class OrderForm(forms.ModelForm):
     fulfilment = forms.ChoiceField(choices=Order.FULFILMENT_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}))
+    replacement_for = forms.ModelChoiceField(queryset=Order.objects.all(), required=False)
     class Meta:
         model = Order
 
         # ✅ ONLY include user-input fields
-        exclude = ['amount', 'gst', 'cgst', 'sgst', 'igst', 'total_amount']
+        exclude = ['amount', 'gst', 'cgst', 'sgst', 'igst', 'total_amount','ship_date']
 
         widgets = {
             'portal': forms.Select(attrs={'class': 'form-control', 'required': True}),
@@ -17,7 +18,7 @@ class OrderForm(forms.ModelForm):
             'order_number': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
             'customer_name': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
             'invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'ship_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'ship_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'readonly': True}),
             'status': forms.Select(attrs={'class': 'form-control'}),
         }
 
