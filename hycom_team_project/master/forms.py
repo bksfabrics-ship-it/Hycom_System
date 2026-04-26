@@ -20,7 +20,7 @@ class OrderForm(forms.ModelForm):
             'invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'ship_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'readonly': True}),
             'status': forms.Select(attrs={'class': 'form-control'}),
-        }
+            'remarks': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Optional notes (internal use)'}),}
 
     def clean(self):
         cleaned_data = super().clean()

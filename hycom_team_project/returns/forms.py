@@ -27,34 +27,35 @@ from django.forms import formset_factory
 class ReturnItemForm(forms.ModelForm):
     class Meta:
         model = ReturnItem
-        fields = ['product', 'quantity', 'condition', 'item_arrived_date']
+        fields = ['product', 'quantity', 'condition', 'item_arrived_date', 'qc_message', 'customer_message']
+        widgets = {
+            'customer_message': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'qc_message': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+                    }
         
     def __init__(self, *args, **kwargs):
-        order = kwargs.pop('order', None)
+        self.order = kwargs.pop('order', None)
         super().__init__(*args, **kwargs)
 
-        if order:
-            product_ids = order.items.values_list('product_id', flat=True)
+        if self.order:
+            product_ids = self.order.items.values_list('product_id', flat=True)
 
             self.fields['product'].queryset = Product.objects.filter(id__in=product_ids)
 
             # OPTIONAL: better labels
             self.fields['product'].label_from_instance = lambda obj: (
                 f"{obj.name} ({obj.sku}) - Ordered: "
-                f"{order.items.get(product=obj).quantity}"
+                f"{self.order.items.get(product=obj).quantity}"
             )
             
     def clean(self):
         cleaned_data = super().clean()
-
+        print("CLEANED DATA:...........", cleaned_data)
         product = cleaned_data.get('product')
         qty = cleaned_data.get('quantity')
 
-        if self.initial.get('order'):
-            order = self.initial['order']
-
-        if product and qty:
-            ordered_qty = order.items.get(product=product).quantity
+        if self.order and product and qty:
+            ordered_qty = self.order.items.get(product=product).quantity
 
             if qty > ordered_qty:
                 raise forms.ValidationError(f"Cannot return more than ordered ({ordered_qty})")
@@ -62,5 +63,3 @@ class ReturnItemForm(forms.ModelForm):
         return cleaned_data
             
 
-
-ReturnItemFormSet = formset_factory(ReturnItemForm, extra=3)

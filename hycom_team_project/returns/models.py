@@ -22,3 +22,6 @@ class ReturnItem(models.Model):
     condition = models.CharField(max_length=20, choices=[('good', 'Good'), ('damaged', 'Damaged')])
     quality_check = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('verified', 'Verified')], default='pending')
     is_stock_added = models.BooleanField(default=False)
+    customer_message = models.TextField(blank=True)
+    qc_message = models.TextField(blank=True)
+    qc_checked_by = models.CharField(max_length=100, blank=True)

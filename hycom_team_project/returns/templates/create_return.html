@@ -47,6 +47,21 @@
                         {{ form.condition }}
                         {{ form.condition.errors }}
                     </div>
+                    <div class="col-md-6">
+                        <label>Customer Message</label>
+                        {{ form.customer_message }}
+                        {{ form.customer_message.errors }}
+                    </div>
+                    <div class="col-md-3">
+                        <label>QC Checked by</label>
+                        {{ form.qc_checked_by }}
+                        {{ form.qc_checked_by.errors }}
+
+                    <div class="col-md-6">
+                        <label>QC Remarks</label>
+                        {{ form.qc_message }}
+                        {{ form.qc_message.errors }}
+                    </div>
 
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="button" class="btn btn-danger w-100" onclick="removeRow(this)">
