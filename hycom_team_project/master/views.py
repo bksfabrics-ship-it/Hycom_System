@@ -20,6 +20,8 @@ from django.forms import modelformset_factory
 from django.db import transaction
 from datetime import date
 from returns.models import Return
+from utils.google_sheets import push_order_to_sheet
+from utils.email_service import send_order_email
 
 
 
@@ -222,7 +224,19 @@ def edit_order(request, pk):
                         item.order = order
                         item.price = price
                         item.save()
-
+                    
+                    # if old_status != order.status:
+                    #     try:
+                    #         send_order_email(order, is_update=True)
+                    #     except Exception as e:
+                    #         print("Email failed:", e)
+                    
+                    # try:
+                    #     push_order_to_sheet(order)
+                    # except Exception as e:
+                    #     import traceback
+                    #     print("GOOGLE SYNC ERROR:")
+                    #     traceback.print_exc()
                     already_processed = Return.objects.filter(order=order).exists()
                     # ✅ REDIRECT ONLY IF STATUS CHANGED
                     if old_status != order.status:
@@ -358,7 +372,20 @@ def create_order_ui(request):
                     order.total_amount = round(order.amount + order.gst, 2)
 
                     order.save()
-
+                    
+                    
+                    try:
+                        send_order_email(order, is_update=True)
+                    except Exception as e:
+                        print("Email failed:", e)
+                    
+                    try:
+                        push_order_to_sheet(order)
+                    except Exception as e:
+                        import traceback
+                        print("GOOGLE SYNC ERROR:")
+                        traceback.print_exc()
+                        
                     # ✅ STEP 6: Return stock logic
                     # if order.status == 'return_arrived':
                     #     for it in order.items.all():
