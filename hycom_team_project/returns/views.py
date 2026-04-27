@@ -21,7 +21,7 @@ def create_return(request):
     if order_id:
         order = Order.objects.get(id=order_id)
 
-    ReturnItemFormSet = formset_factory(ReturnItemForm, extra=3)
+    ReturnItemFormSet = formset_factory(ReturnItemForm, extra=1)
 
     if request.method == 'POST':
         formset = ReturnItemFormSet(request.POST, form_kwargs={'order': order})

@@ -2,6 +2,28 @@
 
 {% block content %}
 
+<style>
+.item-row {
+    background: #fafafa;
+}
+
+/* uniform height */
+.item-row input,
+.item-row select {
+    height: 42px !important;
+}
+
+/* textarea */
+.item-row textarea {
+    min-height: 42px !important;
+}
+
+/* spacing */
+.item-row .row {
+    align-items: end;
+}
+</style>
+
 {% if order %}
     <h5>Order: {{ order.order_number }}</h5>
 
@@ -22,51 +44,60 @@
         <form method="post">
             {% csrf_token %}
 
-            <!-- ✅ FORMSET MANAGEMENT -->
             {{ formset.management_form }}
 
             <div id="return-items">
 
                 {% for form in formset %}
-                <div class="row g-3 mb-3 border p-3 rounded item-row">
+                <div class="border p-3 mb-3 rounded item-row">
 
-                    <div class="col-md-4">
-                        <label>Product</label>
-                        {{ form.product }}
-                        {{ form.product.errors }}
+                    <!-- ROW 1 -->
+                    <div class="row g-3">
+
+                        <div class="col-md-4">
+                            <label>Product</label>
+                            {{ form.product }}
+                            <div class="text-danger">{{ form.product.errors }}</div>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label>Quantity</label>
+                            {{ form.quantity }}
+                            <div class="text-danger">{{ form.quantity.errors }}</div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label>Condition</label>
+                            {{ form.condition }}
+                            <div class="text-danger">{{ form.condition.errors }}</div>
+                        </div>
+
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-danger w-100" onclick="removeRow(this)">
+                                Remove
+                            </button>
+                        </div>
+
                     </div>
 
-                    <div class="col-md-3">
-                        <label>Quantity</label>
-                        {{ form.quantity }}
-                        {{ form.quantity.errors }}
-                    </div>
+                    <!-- ROW 2 -->
+                    <div class="row g-3 mt-2">
 
-                    <div class="col-md-3">
-                        <label>Condition</label>
-                        {{ form.condition }}
-                        {{ form.condition.errors }}
-                    </div>
-                    <div class="col-md-6">
-                        <label>Customer Message</label>
-                        {{ form.customer_message }}
-                        {{ form.customer_message.errors }}
-                    </div>
-                    <div class="col-md-3">
-                        <label>QC Checked by</label>
-                        {{ form.qc_checked_by }}
-                        {{ form.qc_checked_by.errors }}
+                        <div class="col-md-4">
+                            <label>Customer Message</label>
+                            {{ form.customer_message }}
+                        </div>
 
-                    <div class="col-md-6">
-                        <label>QC Remarks</label>
-                        {{ form.qc_message }}
-                        {{ form.qc_message.errors }}
-                    </div>
+                        <div class="col-md-4">
+                            <label>QC Checked by</label>
+                            {{ form.qc_checked_by }}
+                        </div>
 
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="button" class="btn btn-danger w-100" onclick="removeRow(this)">
-                            Remove
-                        </button>
+                        <div class="col-md-4">
+                            <label>QC Remarks</label>
+                            {{ form.qc_message }}
+                        </div>
+
                     </div>
 
                 </div>
@@ -74,12 +105,11 @@
 
             </div>
 
-            <!-- ✅ ADD ROW -->
             <button type="button" class="btn btn-primary mt-2" onclick="addRow()">
                 + Add Item
             </button>
 
-            <div class="mt-4">
+            <div class="mt-3">
                 <button type="submit" class="btn btn-success">Save</button>
                 <a href="/api/order_list/" class="btn btn-secondary">Cancel</a>
             </div>
@@ -90,7 +120,6 @@
 
 </div>
 
-<!-- ✅ JAVASCRIPT -->
 <script>
 
 // ADD ROW
@@ -99,36 +128,43 @@ function addRow() {
     let container = document.getElementById('return-items');
     let totalForms = document.getElementById('id_form-TOTAL_FORMS');
 
-    let currentCount = parseInt(totalForms.value);
+    let formIndex = parseInt(totalForms.value);
     let firstRow = document.querySelector('.item-row');
 
     let newRow = firstRow.cloneNode(true);
 
-    // clear values
-    newRow.querySelectorAll('input, select').forEach(el => {
+    // CLEAR INPUTS
+    newRow.querySelectorAll('input, select, textarea').forEach(el => {
         el.value = '';
     });
 
-    // update form index
-    newRow.innerHTML = newRow.innerHTML.replace(/form-(\d+)-/g, `form-${currentCount}-`);
+    // REMOVE OLD ERRORS
+    newRow.querySelectorAll('.text-danger').forEach(el => {
+        el.innerHTML = '';
+    });
+
+    // UPDATE NAME + ID
+    newRow.innerHTML = newRow.innerHTML.replace(/form-(\d+)-/g, `form-${formIndex}-`);
 
     container.appendChild(newRow);
 
-    totalForms.value = currentCount + 1;
+    totalForms.value = formIndex + 1;
 }
 
 
 // REMOVE ROW
 function removeRow(btn) {
 
-    let row = btn.closest('.item-row');
     let container = document.getElementById('return-items');
+    let totalForms = document.getElementById('id_form-TOTAL_FORMS');
+
+    let row = btn.closest('.item-row');
 
     if (container.children.length > 1) {
         row.remove();
-
-        let totalForms = document.getElementById('id_form-TOTAL_FORMS');
         totalForms.value = container.children.length;
+    } else {
+        alert("At least one item is required");
     }
 }
 

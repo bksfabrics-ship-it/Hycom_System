@@ -27,10 +27,11 @@ from django.forms import formset_factory
 class ReturnItemForm(forms.ModelForm):
     class Meta:
         model = ReturnItem
-        fields = ['product', 'quantity', 'condition', 'item_arrived_date', 'qc_message', 'customer_message']
+        fields = ['product', 'quantity', 'condition', 'item_arrived_date', 'qc_message','qc_checked_by', 'customer_message']
         widgets = {
             'customer_message': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'qc_message': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+                'qc_checked_by': forms.TextInput(attrs={'class': 'form-control'}),
                     }
         
     def __init__(self, *args, **kwargs):
