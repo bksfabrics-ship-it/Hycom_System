@@ -66,9 +66,9 @@ Total Amount  : ₹{order.total_amount}
     message += "\nThis is an auto-generated email."
 
     recipients = [
-        "ecom@hycomworkwear.in",
+        # "ecom@hycomworkwear.in",
         "teamleader-ecom@bksfabrics.in",
-        "digitalmarketing@bksfabrics.in"
+        # "digitalmarketing@bksfabrics.in"
     ]
 
     send_mail(subject, message.strip(), None, recipients, fail_silently=False)
