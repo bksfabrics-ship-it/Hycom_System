@@ -22,8 +22,6 @@ from datetime import date
 from returns.models import Return
 from utils.google_sheets import push_order_to_sheet
 from utils.email_service import send_order_email
-<<<<<<< HEAD
-=======
 import threading
 from django.db import transaction
 
@@ -31,7 +29,6 @@ from django.db import transaction
 def run_async(func, *args):
     thread = threading.Thread(target=func, args=args, daemon=True)
     thread.start()
->>>>>>> 19f542f83e290080719dd20e5ba633adf1ab2bf1
 
 
 
