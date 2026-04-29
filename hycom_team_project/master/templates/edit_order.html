@@ -60,6 +60,12 @@
             {{ order_form.invoice_date.errors }}
         </div>
 
+        <div class="col-md-3" id="ship_date_field">
+            <label>Ship Date</label>
+            {{ order_form.ship_date }}
+            {{ order_form.ship_date.errors }}
+        </div>
+
         <div class="col-md-3">
             <label>Order Number</label>
             {{ order_form.order_number }}
@@ -304,17 +310,37 @@ function removeRow(btn) {
         totalForms.value = container.children.length;
     }
 }
+document.addEventListener("DOMContentLoaded", function () {
 
-document.getElementById("id_status").addEventListener("change", function() {
+    const statusField = document.getElementById("id_status");
+    const shipDateField = document.getElementById("ship_date_field");
+    const replacementSection = document.getElementById("replacement_section");
 
-    let status = this.value;
-    let section = document.getElementById("replacement_section");
+    if (!statusField) return;
 
-    if (status === "Return Arrived") {
-        section.style.display = "block";
-    } else {
-        section.style.display = "none";
+    function toggleFields() {
+        const status = statusField.value.trim();
+
+        console.log("Status:", status); // debug
+
+        // Ship Date toggle
+        if (status === "Shipped") {
+            shipDateField.style.display = "block";
+        } else {
+            shipDateField.style.display = "none";
+        }
+
+        // Replacement toggle
+        if (status === "Return Arrived") {
+            replacementSection.style.display = "block";
+        } else {
+            replacementSection.style.display = "none";
+        }
     }
+
+    toggleFields(); // on load
+    statusField.addEventListener("change", toggleFields);
+
 });
 
 document.querySelector("[name='is_replacement']").addEventListener("change", function() {

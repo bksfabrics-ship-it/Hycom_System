@@ -148,6 +148,7 @@ def restore_old_stock(order):
 
 def edit_order(request, pk):
 
+    order_model = Order
     order = get_object_or_404(Order, pk=pk)
 
     ItemFormSet = modelformset_factory(
@@ -169,18 +170,21 @@ def edit_order(request, pk):
             try:
                 with transaction.atomic():
 
-                    old_status = order.status
-                    old_ship_date = order.ship_date
+                    old_status = order_model.objects.filter(id=order.id).values_list('status', flat=True).first()
+                    # old_ship_date = order.ship_date
 
                     # ✅ SAVE ORDER (commit=False)
                     order = order_form.save(commit=False)
 
                     # ✅ SHIP DATE FIX
-                    if not order.ship_date:
-                        order.ship_date = old_ship_date
+                    # if not order.ship_date:
+                    #     order.ship_date = old_ship_date
 
-                    if order.status == 'Shipped' and not old_ship_date:
-                        order.ship_date = date.today()
+                    # if order.status == 'Shipped' and not old_ship_date:
+                    #     order.ship_date = date.today()
+                    if order.status == 'Shipped' and not order.ship_date:
+                        messages.error(request, "Please select Ship Date when status is Shipped")
+                        return redirect(request.path)
 
                     # if order.status == 'Return In Transit':
                         
@@ -234,25 +238,23 @@ def edit_order(request, pk):
                     
                     if old_status != order.status:
                         try:
-                            run_async(send_order_email(order, is_update=True))
+                            transaction.on_commit(lambda: run_async(send_order_email, order, True))
                         except Exception as e:
                             print("Email failed:", e)
                     
                     try:
-                        run_async(push_order_to_sheet(order))
+                        transaction.on_commit(lambda: run_async(push_order_to_sheet, order))
                     except Exception as e:
                         import traceback
                         print("GOOGLE SYNC ERROR:")
                         traceback.print_exc()
                         
                     already_processed = Return.objects.filter(order=order).exists()
-                    # ✅ REDIRECT ONLY IF STATUS CHANGED
-                    if old_status != order.status:
-                        if order.status in ['Return Arrived', 'Cancelled']:
-                            if already_processed:
-                                messages.warning(request, "Return/Cancellation already processed")
-                                return redirect('/api/order_list/')
-                            return redirect(f'/returns/create/?order_id={order.id}')
+                    if order.status in ['Return Arrived', 'Cancelled']:
+                        if already_processed:
+                            messages.warning(request, "Return/Cancellation already processed")
+                            return redirect('/api/order_list/')
+                        return redirect(f'/returns/create/?order_id={order.id}')
 
                     messages.success(request, "Order updated successfully")
                     return redirect('/api/order_list/')
@@ -394,14 +396,6 @@ def create_order_ui(request):
                         print("GOOGLE SYNC ERROR:")
                         traceback.print_exc()
                         
-                    # ✅ STEP 6: Return stock logic
-                    # if order.status == 'return_arrived':
-                    #     for it in order.items.all():
-                    #         product = it.product
-                    #         # product.stock += it.quantity
-                    #         product.save()
-                    # order.is_stock_updated = True
-                    # order.save()
                 messages.success(request, "Order saved successfully")
                 return redirect('/api/order_list/')
 
