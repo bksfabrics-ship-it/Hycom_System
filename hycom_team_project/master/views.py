@@ -22,6 +22,16 @@ from datetime import date
 from returns.models import Return
 from utils.google_sheets import push_order_to_sheet
 from utils.email_service import send_order_email
+<<<<<<< HEAD
+=======
+import threading
+from django.db import transaction
+
+
+def run_async(func, *args):
+    thread = threading.Thread(target=func, args=args, daemon=True)
+    thread.start()
+>>>>>>> 19f542f83e290080719dd20e5ba633adf1ab2bf1
 
 
 
@@ -225,18 +235,19 @@ def edit_order(request, pk):
                         item.price = price
                         item.save()
                     
-                    # if old_status != order.status:
-                    #     try:
-                    #         send_order_email(order, is_update=True)
-                    #     except Exception as e:
-                    #         print("Email failed:", e)
+                    if old_status != order.status:
+                        try:
+                            run_async(send_order_email(order, is_update=True))
+                        except Exception as e:
+                            print("Email failed:", e)
                     
-                    # try:
-                    #     push_order_to_sheet(order)
-                    # except Exception as e:
-                    #     import traceback
-                    #     print("GOOGLE SYNC ERROR:")
-                    #     traceback.print_exc()
+                    try:
+                        run_async(push_order_to_sheet(order))
+                    except Exception as e:
+                        import traceback
+                        print("GOOGLE SYNC ERROR:")
+                        traceback.print_exc()
+                        
                     already_processed = Return.objects.filter(order=order).exists()
                     # ✅ REDIRECT ONLY IF STATUS CHANGED
                     if old_status != order.status:
@@ -286,7 +297,7 @@ def get_product_by_sku(request):
 
 def create_order_ui(request):
 
-    ItemFormSet = formset_factory(OrderItemForm, extra=3)
+    ItemFormSet = formset_factory(OrderItemForm, extra=1)
 
     if request.method == 'POST':
         order_form = OrderForm(request.POST)
@@ -375,12 +386,12 @@ def create_order_ui(request):
                     
                     
                     try:
-                        send_order_email(order, is_update=True)
+                        transaction.on_commit(lambda: run_async(send_order_email, order, True))
                     except Exception as e:
                         print("Email failed:", e)
                     
                     try:
-                        push_order_to_sheet(order)
+                        transaction.on_commit(lambda: run_async(push_order_to_sheet, order))
                     except Exception as e:
                         import traceback
                         print("GOOGLE SYNC ERROR:")
