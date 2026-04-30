@@ -7,22 +7,43 @@
 <form method="post">
     {% csrf_token %}
 
+    {% if order_form.non_field_errors %}
+    <div class="alert alert-danger">
+        {{ order_form.non_field_errors }}
+    </div>
+    {% endif %}
+
     <!-- ORDER DETAILS -->
     <div class="row g-3">
 
         <div class="col-md-3">
             <label>Portal</label>
             {{ order_form.portal }}
+            {% if order_form.portal.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.portal.errors }}
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-md-3">
             <label>Fulfilment</label>
             {{ order_form.fulfilment }}
+            {% if order_form.fulfilment.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.fulfilment.errors }}
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-md-3 mt-4">
             <div class="form-check">
                 {{ order_form.is_b2b }}
+                {% if order_form.is_b2b.errors %}
+                <div class="alert alert-danger">
+                    {{ order_form.is_b2b.errors }}
+                </div>
+                {% endif %}
                 <label class="form-check-label ms-2">Is B2B?</label>
             </div>
         </div>
@@ -30,44 +51,89 @@
         <div class="col-md-3" id="gst_field" style="display:none;">
             <label>GST Number</label>
             {{ order_form.gst_number }}
+            {% if order_form.gst_number.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.gst_number.errors }}
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-md-3">
             <label>Invoice Number</label>
             {{ order_form.invoice_number }}
+            {% if order_form.invoice_number.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.invoice_number.errors }}
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-md-3">
             <label>Invoice Date</label>
             {{ order_form.invoice_date }}
+            {% if order_form.invoice_date.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.invoice_date.errors }}
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-md-3">
             <label>Order Number</label>
             {{ order_form.order_number }}
+            {% if order_form.order_number.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.order_number.errors }}
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-md-3">
             <label>Customer Name</label>
             {{ order_form.customer_name }}
+            {% if order_form.customer_name.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.customer_name.errors }}
+            </div>
+            {% endif %}
         </div>
         <div class="col-md-3">
             <label>State</label>
             {{ order_form.state }}
+            {% if order_form.state.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.state.errors }}
+            </div>
+            {% endif %}
         </div>
 
-        <div class="col-md-3">
+        {% comment %} <div class="col-md-3">
             <label>State Code</label>
             {{ order_form.state_code }}
-        </div>
+            {% if order_form.state_code.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.state_code.errors }}
+            </div>
+            {% endif %}
+        </div> {% endcomment %}
 
         <div class="col-md-3">
             <label>Order Status</label>
             {{ order_form.status }}
+            {% if order_form.status.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.status.errors }}
+            </div>
+            {% endif %}
         </div>
         <div class="col-md-3">
             <label>Remarks</label>
             {{ order_form.remarks }}
+            {% if order_form.remarks.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.remarks.errors }}
+            </div>
+            {% endif %}
         </div>
 
     </div>
@@ -90,16 +156,31 @@
             <div class="col-md-3">
                 <label>Product</label>
                 {{ form.product }}
+                {% if form.product.errors %}
+                <div class="alert alert-danger">
+                    {{ form.product.errors }}
+                </div>
+                {% endif %}
             </div>
 
             <div class="col-md-2">
                 <label>Quantity</label>
                 {{ form.quantity }}
+                {% if form.quantity.errors %}
+                <div class="alert alert-danger">
+                    {{ form.quantity.errors }}
+                </div>
+                {% endif %}
             </div>
 
             <div class="col-md-2">
                 <label>Price</label>
                 {{ form.price }}
+                {% if form.price.errors %}
+                <div class="alert alert-danger">
+                    {{ form.price.errors }}
+                </div>
+                {% endif %}
             </div>
 
             <div class="col-md-2 d-flex align-items-end">
@@ -258,6 +339,25 @@ function removeRow(btn) {
         totalForms.value = container.children.length;
     }
 }
+
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    setTimeout(function () {
+        let alerts = document.querySelectorAll('.alert');
+
+        alerts.forEach(function(alert) {
+            alert.style.transition = "opacity 0.5s ease";
+            alert.style.opacity = "0";
+
+            setTimeout(() => {
+                alert.remove();
+            }, 500); // remove after fade
+        });
+
+    }, 5000); // ⏱ disappears after 5 seconds
+
+});
 
 </script>
 

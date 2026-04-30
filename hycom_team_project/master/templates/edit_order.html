@@ -83,11 +83,11 @@
             {{ order_form.state.errors }}
         </div>
 
-        <div class="col-md-3">
+        {% comment %} <div class="col-md-3">
             <label>State Code</label>
             {{ order_form.state_code }}
             {{ order_form.state_code.errors }}
-        </div>
+        </div> {% endcomment %}
         <div class="col-md-3">
         <label>Remarks</label>
         {{ order_form.remarks }}

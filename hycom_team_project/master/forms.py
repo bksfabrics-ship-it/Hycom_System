@@ -25,12 +25,27 @@ class OrderForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        invoice_date = cleaned_data.get('invoice_date')
+        ship_date = cleaned_data.get('ship_date')
+        status = cleaned_data.get('status')
 
         # Optional validation (only if needed)
         invoice = cleaned_data.get('invoice_number')
 
         if not invoice:
             self.add_error('invoice_number', "Invoice number is required")
+            
+        if ship_date and invoice_date and ship_date < invoice_date:
+            self.add_error(
+                'ship_date',
+                "Ship Date cannot be earlier than Invoice Date"
+            )
+            
+        if ship_date and not invoice_date:
+            self.add_error('invoice_date', "Invoice Date required if Ship Date is entered")
+            
+        if status == "Shipped" and not ship_date:
+            self.add_error('ship_date', "Ship Date is required when status is Shipped")
 
         return cleaned_data
 

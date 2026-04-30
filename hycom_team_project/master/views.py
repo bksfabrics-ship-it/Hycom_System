@@ -367,9 +367,9 @@ def create_order_ui(request):
                     order.gst = round(gst_total, 2)
 
                     # ✅ STEP 4: GST Split
-                    state = (order.state or '').strip().lower()
+                    state_code = (order.state.code.strip() if order.state and order.state.code else "")
 
-                    if state in ['tamil nadu', 'tn']:
+                    if state_code == '33':
                         order.cgst = round(order.gst / 2, 2)
                         order.sgst = round(order.gst / 2, 2)
                         order.igst = 0
@@ -384,10 +384,10 @@ def create_order_ui(request):
                     order.save()
                     
                     
-                    try:
-                        transaction.on_commit(lambda: run_async(send_order_email, order, True))
-                    except Exception as e:
-                        print("Email failed:", e)
+                    # try:
+                    #     transaction.on_commit(lambda: run_async(send_order_email, order, True))
+                    # except Exception as e:
+                    #     print("Email failed:", e)
                     
                     try:
                         transaction.on_commit(lambda: run_async(push_order_to_sheet, order))

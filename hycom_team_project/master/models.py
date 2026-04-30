@@ -1,6 +1,14 @@
 from django.db import models
 from stock.models import Product
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+
+class State(models.Model):
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=5)
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
 
 class Order(models.Model):
 
@@ -28,7 +36,7 @@ class Order(models.Model):
     portal = models.CharField(max_length=20, choices=PORTAL_CHOICES)
     order_number = models.CharField(max_length=100)
     customer_name = models.CharField(max_length=200)
-    state = models.CharField(max_length=100, blank=True, null=True)
+    state = models.ForeignKey(State, on_delete=models.SET_NULL, null=True, blank=True)
     state_code = models.CharField(max_length=10, blank=True, null=True)
 
     # Invoice Details
@@ -48,9 +56,6 @@ class Order(models.Model):
     is_stock_updated = models.BooleanField(default=False)
     stock_restored = models.BooleanField(default=False)
     # Location
-    state_code = models.CharField(max_length=10)
-
-    # Financials
     amount = models.FloatField(null=True, blank=True)
     gst = models.FloatField(null=True, blank=True)
     cgst = models.FloatField(null=True, blank=True)
@@ -65,21 +70,31 @@ class Order(models.Model):
     replacement_for = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
 
 
-    def save(self, *args, **kwargs):
-        # Auto total calculation
-        # self.total_amount = self.amount + self.gst
-        # if self.status == 'shipped' and not self.ship_date:
-        #     self.ship_date = timezone.now().date()
+    def clean(self):
+        errors = {}
 
-        # Validation
+        # ✅ B2B validation
         if self.is_b2b and not self.gst_number:
-            raise ValueError("GST number required for B2B orders")
+            errors['gst_number'] = "GST number required for B2B orders"
 
+        # ✅ Duplicate order number
+        if Order.objects.filter(order_number=self.order_number).exclude(pk=self.pk).exists():
+            errors['order_number'] = "Order number already exists"
+
+        # ✅ Duplicate invoice number
+        if Order.objects.filter(invoice_number=self.invoice_number).exclude(pk=self.pk).exists():
+            errors['invoice_number'] = "Invoice number already exists"
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # ✅ Ensure clean() is always called
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.order_number
-    
     
     
     
@@ -114,7 +129,6 @@ class OrderItem(models.Model):
         self.product.stock += self.quantity
         self.product.save()
         super().delete(*args, **kwargs)
-        
-    
+
     
     
