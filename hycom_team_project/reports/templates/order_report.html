@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h3>Order Report</h3>
+
+<div class="table-responsive">
+<table class="table table-bordered table-striped table-sm">
+    <thead class="table-dark">
+        <tr>
+            <th>Order No</th>
+            <th>Invoice No</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>State</th>
+
+            <th>SKU</th>
+            <th>Product</th>
+            <th>Size</th>
+            <th>Color</th>
+            <th>Gender</th>
+            <th>Style</th>
+
+            <th>Qty</th>
+            <th>Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row.order__order_number }}</td>
+            <td>{{ row.order__invoice_number }}</td>
+            <td>{{ row.order__invoice_date }}</td>
+            <td>
+                <span class="badge 
+                    {% if row.order__status == 'Shipped' %}bg-success
+                    {% elif row.order__status == 'Cancelled' %}bg-danger
+                    {% else %}bg-warning{% endif %}">
+                    {{ row.order__status }}
+                </span>
+            </td>
+            <td>{{ row.order__customer_name }}</td>
+            <td>{{ row.order__state__name }}</td>
+
+            <td>{{ row.product__sku }}</td>
+            <td>{{ row.product__name }}</td>
+            <td>{{ row.product__size }}</td>
+            <td>{{ row.product__color }}</td>
+            <td>{{ row.product__gender }}</td>
+            <td>{{ row.product__style }}</td>
+
+            <td>{{ row.quantity }}</td>
+            <td>{{ row.price }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="14" class="text-center">No data available</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% endblock %}

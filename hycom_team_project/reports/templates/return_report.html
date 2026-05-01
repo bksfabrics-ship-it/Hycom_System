@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h3>Return / Cancellation / Replacement Report</h3>
+
+<div class="table-responsive">
+<table class="table table-bordered table-striped table-sm">
+    <thead class="table-dark">
+        <tr>
+            <th>Order No</th>
+            <th>Type</th>
+
+            <th>SKU</th>
+            <th>Product</th>
+
+            <th>Qty</th>
+            <th>Condition</th>
+
+            <th>Customer Message</th>
+            <th>QC Checked By</th>
+            <th>QC Remarks</th>
+
+            <th>Arrived Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ row.return_obj__order__order_number }}</td>
+            <td>
+                <span class="badge 
+                    {% if row.return_obj__type == 'Cancelled' %}bg-danger
+                    {% elif row.return_obj__type == 'Replacement' %}bg-info
+                    {% else %}bg-warning{% endif %}">
+                    {{ row.return_obj__type }}
+                </span>
+            </td>
+
+            <td>{{ row.product__sku }}</td>
+            <td>{{ row.product__name }}</td>
+
+            <td>{{ row.quantity }}</td>
+            <td>{{ row.condition }}</td>
+
+            <td>{{ row.customer_message }}</td>
+            <td>{{ row.qc_checked_by }}</td>
+            <td>{{ row.qc_message }}</td>
+
+            <td>{{ row.item_arrived_date }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="10" class="text-center">No return data</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% endblock %}

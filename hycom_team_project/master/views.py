@@ -367,9 +367,11 @@ def create_order_ui(request):
                     order.gst = round(gst_total, 2)
 
                     # ✅ STEP 4: GST Split
-                    state_code = (order.state.code.strip() if order.state and order.state.code else "")
-
+                    print("STATE CODE:,,,,,,,", order.state.code if order.state else "NO STATE")
+                    state_code = (order.state.code if order.state and order.state.code else "")
+                    print("STATE CODE AFTER STRIP:,,,,,,,", state_code)
                     if state_code == '33':
+                        print("INTRA-STATE ORDER - APPLYING CGST/SGST SPLIT")
                         order.cgst = round(order.gst / 2, 2)
                         order.sgst = round(order.gst / 2, 2)
                         order.igst = 0

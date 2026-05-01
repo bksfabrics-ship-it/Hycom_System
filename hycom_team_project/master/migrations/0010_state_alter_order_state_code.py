@@ -18,9 +18,9 @@ class Migration(migrations.Migration):
         #         ('code', models.CharField(max_length=5)),
         #     ],
         # ),
-        migrations.AlterField(
-            model_name='order',
-            name='state_code',
-            field=models.CharField(blank=True, max_length=10, null=True),
-        ),
+        # migrations.AlterField(
+        #     model_name='order',
+        #     name='state_code',
+        #     field=models.CharField(blank=True, max_length=10, null=True),
+        # ),
     ]

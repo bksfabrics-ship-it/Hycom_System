@@ -10,8 +10,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='order',
-            name='state',
-        ),
+        # migrations.RemoveField(
+        #     model_name='order',
+        #     name='state',
+        # ),
     ]
