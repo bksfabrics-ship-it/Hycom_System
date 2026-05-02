@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h3>Order Details</h3>
+
+<div class="card p-4 mb-3">
+    <p><b>Order No:</b> {{ order.order_number }}</p>
+    <p><b>Invoice No:</b> {{ order.invoice_number }}</p>
+    <p><b>Date:</b> {{ order.invoice_date }}</p>
+    <p><b>Status:</b> {{ order.status }}</p>
+    <p><b>Customer:</b> {{ order.customer_name }}</p>
+    <p><b>State:</b> {{ order.state }}</p>
+    <p><b>Remarks:</b> {{ order.remarks }}</p>
+</div>
+
+<h5>Items</h5>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>SKU</th>
+            <th>Product</th>
+            <th>Size</th>
+            <th>Gender</th>
+            <th>Color</th>
+            <th>Style</th>
+            <th>Qty</th>
+            <th>Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in order.items.all %}
+
+        <tr>
+            <td>{{ item.product.sku }}</td>
+            <td>{{ item.product.name }}</td>
+            <td>{{ item.product.size }}</td>
+            <td>{{ item.product.gender }}</td>
+            <td>{{ item.product.color }}</td>
+            <td>{{ item.product.style }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.price }}</td>
+            
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="/reports/order_report/" class="btn btn-secondary">Back</a>
+
+{% endblock %}

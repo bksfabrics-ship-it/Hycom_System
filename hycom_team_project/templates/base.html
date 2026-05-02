@@ -92,12 +92,41 @@
             background: white;
             z-index: 2;
         }
-        .table td:first-child,
         .table th:first-child {
             position: sticky;
             left: 0;
+            background: #111827 !important;
+            color: white !important;
+            z-index: 3;
+        }
+
+        .table td:first-child {
+            position: sticky;
+            left: 0;
             background: white;
-            z-index: 1;
+            z-index: 2;
+        }
+        .dataTables_wrapper .dataTables_filter {
+            float: right;
+            text-align: right;
+        }
+
+        .dataTables_wrapper .dataTables_filter input {
+            width: 250px;
+            display: inline-block;
+            margin-left: 8px;
+        }
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter {
+            margin-bottom: 10px;
+        }
+
+        .dataTables_wrapper .dataTables_info {
+            margin-top: 10px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate {
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -118,9 +147,9 @@
         REPORTS
     </div>
 
-    <a href="/reports/orders/">📊 Order Report</a>
-    <a href="/reports/returns/">🔁 Return Report</a>
-    <a href="/reports/stock/">📦 Stock Report</a>
+    <a href="/reports/order_report/">📊 Order Report</a>
+    <a href="/reports/return_report/">🔁 Return Report</a>
+    <a href="/reports/stock_report/">📦 Stock Report</a>
 </div>
 
 <!-- MAIN CONTENT -->

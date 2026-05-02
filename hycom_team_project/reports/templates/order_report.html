@@ -1,36 +1,103 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<h3>Order Report</h3>
 
+
+<h3 class="mb-3">Order Report</h3>
+<div class="row mb-4">
+
+    <div class="col-md-6">
+        <canvas id="salesChart"></canvas>
+    </div>
+
+    <div class="col-md-3">
+        <canvas id="statusChart"></canvas>
+    </div>
+
+    <div class="col-md-3">
+        <canvas id="productChart"></canvas>
+    </div>
+
+    </div>
+
+<!-- 🔍 FILTERS -->
+<form method="get" class="row g-2 mb-3">
+
+    <div class="col-md-2">
+        <input type="date" name="start_date" value="{{ request.GET.start_date }}" class="form-control">
+    </div>
+
+    <div class="col-md-2">
+        <input type="date" name="end_date" value="{{ request.GET.end_date }}" class="form-control">
+    </div>
+
+    <div class="col-md-2">
+        <select name="status" class="form-control">
+            <option value="">All Status</option>
+            <option {% if request.GET.status == "Pending" %}selected{% endif %}>Pending</option>
+            <option {% if request.GET.status == "Shipped" %}selected{% endif %}>Shipped</option>
+            <option {% if request.GET.status == "Cancelled" %}selected{% endif %}>Cancelled</option>
+            <option {% if request.GET.status == "Return Arrived" %}selected{% endif %}>Return Arrived</option>
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <input type="text" name="search" value="{{ request.GET.search }}" 
+               placeholder="Search Order / SKU / Customer" class="form-control">
+    </div>
+
+    <div class="col-md-3">
+        <button class="btn btn-primary">Filter</button>
+        <a href="" class="btn btn-secondary">Reset</a>
+
+        <a href="{% url 'export_order_report' %}?{{ request.GET.urlencode }}" 
+           class="btn btn-success">
+           Export
+        </a>
+    </div>
+
+</form>
+
+<!-- 📊 TABLE -->
 <div class="table-responsive">
-<table class="table table-bordered table-striped table-sm">
-    <thead class="table-dark">
+<table id="reportTable" class="table table-bordered table-striped table-sm order-table">
+
+    <thead>
         <tr>
             <th>Order No</th>
             <th>Invoice No</th>
             <th>Date</th>
+            <th>Ship Date</th>
+            <th>Fulfilment</th>
+            <th>B2B</th>
+            <th>GST Number</th>
             <th>Status</th>
             <th>Customer</th>
             <th>State</th>
-
             <th>SKU</th>
             <th>Product</th>
             <th>Size</th>
             <th>Color</th>
             <th>Gender</th>
             <th>Style</th>
-
             <th>Qty</th>
             <th>Price</th>
+            <th>Remarks</th>
+            <th>Action</th>
         </tr>
     </thead>
+
     <tbody>
         {% for row in data %}
         <tr>
             <td>{{ row.order__order_number }}</td>
             <td>{{ row.order__invoice_number }}</td>
             <td>{{ row.order__invoice_date }}</td>
+            <td>{{ row.order__ship_date }}</td>
+            <td>{{ row.order__fulfilment }}</td>
+            <td>{{ row.order__is_b2b }}</td>
+            <td>{{ row.order__gst_number }}</td>
+
             <td>
                 <span class="badge 
                     {% if row.order__status == 'Shipped' %}bg-success
@@ -39,24 +106,134 @@
                     {{ row.order__status }}
                 </span>
             </td>
+
             <td>{{ row.order__customer_name }}</td>
             <td>{{ row.order__state__name }}</td>
 
             <td>{{ row.product__sku }}</td>
+
+            {% comment %} <td>
+                <strong>{{ row.product__name }}</strong><br>
+                <small class="text-muted">
+                    {{ row.product__size }} | 
+                    {{ row.product__color }} | 
+                    {{ row.product__gender }} | 
+                    {{ row.product__style }}
+                </small>
+            </td> {% endcomment %}
             <td>{{ row.product__name }}</td>
             <td>{{ row.product__size }}</td>
             <td>{{ row.product__color }}</td>
             <td>{{ row.product__gender }}</td>
             <td>{{ row.product__style }}</td>
-
             <td>{{ row.quantity }}</td>
-            <td>{{ row.price }}</td>
+            <td>₹ {{ row.price }}</td>
+            <td>{{ row.order__remarks }}</td>
+            <td>
+                <a href="{% url 'order_detail_view' row.order__id %}" 
+                class="btn btn-sm btn-primary">
+                    View
+                </a>
+            </td>
         </tr>
         {% empty %}
-        <tr><td colspan="14" class="text-center">No data available</td></tr>
+        <tr>
+            <td colspan="16" class="text-center">No data available</td>
+        </tr>
         {% endfor %}
     </tbody>
+
 </table>
 </div>
 
+<!-- ✅ DATATABLES -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+$(document).ready(function () {
+    $('#reportTable').DataTable({
+        pageLength: 10,
+        ordering: true
+    });
+});
+</script>
+
+<!-- 🎨 STYLE -->
+<style>
+.table {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table thead th {
+    background: #111827;
+    color: white;
+    font-size: 13px;
+    text-transform: uppercase;
+}
+
+.table td {
+    white-space: normal;
+}
+
+.badge {
+    font-size: 12px;
+    padding: 6px 10px;
+}
+.order-table th,
+.order-table td {
+    white-space: nowrap;
+}
+</style>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+    /* 📈 SALES TREND */
+    const salesData = {{ sales_trend|safe }};
+    const salesLabels = salesData.map(i => i.date);
+    const salesValues = salesData.map(i => i.total);
+
+    new Chart(document.getElementById('salesChart'), {
+        type: 'line',
+        data: {
+            labels: salesLabels,
+            datasets: [{
+                label: 'Sales',
+                data: salesValues,
+                fill: true,
+                tension: 0.3
+            }]
+        }
+    });
+
+    /* 📊 STATUS */
+    const statusData = {{ status_data|safe }};
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: statusData.map(i => i.order__status),
+            datasets: [{
+                data: statusData.map(i => i.count)
+            }]
+        }
+    });
+
+    /* 🏆 TOP PRODUCTS */
+    const productData = {{ top_products|safe }};
+    new Chart(document.getElementById('productChart'), {
+        type: 'bar',
+        data: {
+            labels: productData.map(i => i.product__name),
+            datasets: [{
+                label: 'Qty',
+                data: productData.map(i => i.total_qty)
+            }]
+        }
+    });
+    </script>
 {% endblock %}
