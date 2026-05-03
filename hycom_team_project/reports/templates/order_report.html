@@ -192,27 +192,29 @@ $(document).ready(function () {
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script>
-    /* 📈 SALES TREND */
-    const salesData = {{ sales_trend|safe }};
-    const salesLabels = salesData.map(i => i.date);
-    const salesValues = salesData.map(i => i.total);
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const salesData = JSON.parse('{{ sales_trend|escapejs }}');
+    const statusData = JSON.parse('{{ status_data|escapejs }}');
+    const productData = JSON.parse('{{ top_products|escapejs }}');
+
+    console.log("Sales:", salesData);
+    console.log("Status:", statusData);
+    console.log("Products:", productData);
 
     new Chart(document.getElementById('salesChart'), {
         type: 'line',
         data: {
-            labels: salesLabels,
+            labels: salesData.map(i => i.date),
             datasets: [{
                 label: 'Sales',
-                data: salesValues,
-                fill: true,
+                data: salesData.map(i => i.total),
                 tension: 0.3
             }]
         }
     });
 
-    /* 📊 STATUS */
-    const statusData = {{ status_data|safe }};
     new Chart(document.getElementById('statusChart'), {
         type: 'doughnut',
         data: {
@@ -223,10 +225,8 @@ $(document).ready(function () {
         }
     });
 
-    /* 🏆 TOP PRODUCTS */
-    const productData = {{ top_products|safe }};
     new Chart(document.getElementById('productChart'), {
-        type: 'bar',
+        type: 'doughnut',
         data: {
             labels: productData.map(i => i.product__name),
             datasets: [{
@@ -234,6 +234,8 @@ $(document).ready(function () {
                 data: productData.map(i => i.total_qty)
             }]
         }
-    });
-    </script>
+    }); 
+
+});
+</script>
 {% endblock %}

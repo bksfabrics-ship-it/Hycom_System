@@ -10,9 +10,9 @@
             <th>SKU</th>
             <th>Product</th>
             <th>Available Stock</th>
-            <th>Ordered Qty</th>
+            {% comment %} <th>Ordered Qty</th>
             <th>Returned Qty</th>
-            <th>Net Stock</th>
+            <th>Net Stock</th> {% endcomment %}
         </tr>
     </thead>
     <tbody>
@@ -23,12 +23,12 @@
 
             <td>{{ p.stock }}</td>
 
-            <td>{{ p.ordered_qty|default:0 }}</td>
+            {% comment %} <td>{{ p.ordered_qty|default:0 }}</td>
             <td>{{ p.returned_qty|default:0 }}</td>
 
             <td>
                 {{ p.stock|default:0|add:p.returned_qty|default:0|add:-p.ordered_qty|default:0 }}
-            </td>
+            </td> {% endcomment %}
         </tr>
         {% empty %}
         <tr><td colspan="6" class="text-center">No stock data</td></tr>
@@ -36,5 +36,31 @@
     </tbody>
 </table>
 </div>
+<style>
+.table {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+}
 
+.table thead th {
+    background: #111827;
+    color: white;
+    font-size: 13px;
+    text-transform: uppercase;
+}
+
+.table td {
+    white-space: normal;
+}
+
+.badge {
+    font-size: 12px;
+    padding: 6px 10px;
+}
+.order-table th,
+.order-table td {
+    white-space: nowrap;
+}
+</style>
 {% endblock %}

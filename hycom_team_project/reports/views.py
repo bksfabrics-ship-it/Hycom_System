@@ -10,7 +10,8 @@ from django.http import HttpResponse
 from master.models import Order
 from django.shortcuts import get_object_or_404
 from django.db.models.functions import TruncDate
-
+import json
+from django.core.serializers.json import DjangoJSONEncoder
 
 def stock_report(request):
     products = Product.objects.annotate(
@@ -18,7 +19,7 @@ def stock_report(request):
         returned_qty=Sum('returnitem__quantity')
     )
 
-    return render(request, 'reports/stock_report.html', {'products': products})
+    return render(request, 'stock_report.html', {'products': products})
 
 
 
@@ -40,7 +41,7 @@ def return_report(request):
         'item_arrived_date'
     )
 
-    return render(request, 'reports/return_report.html', {'data': data})
+    return render(request, 'return_report.html', {'data': data})
 
 
 
@@ -110,13 +111,18 @@ def order_report(request):
     top_products = qs.values('product__name') \
         .annotate(total_qty=Sum('quantity')) \
         .order_by('-total_qty')[:5]
+        
+    top_colors = qs.values('product__color') \
+        .annotate(total_qty=Sum('quantity')) \
+        .order_by('-total_qty')[:5]
 
     return render(request, 'order_report.html', {
-        'data': data,
-        'sales_trend': list(sales_trend),
-        'status_data': list(status_data),
-        'top_products': list(top_products),
-    })
+    'data': data,
+    'sales_trend': json.dumps(list(sales_trend), cls=DjangoJSONEncoder),
+    'status_data': json.dumps(list(status_data), cls=DjangoJSONEncoder),
+    'top_products': json.dumps(list(top_products), cls=DjangoJSONEncoder),
+    'product_data': json.dumps(list(top_colors), cls=DjangoJSONEncoder)
+})
 
 
 
