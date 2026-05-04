@@ -53,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'utils.error_middleware.GlobalExceptionMiddleware',
 ]
 
 ROOT_URLCONF = 'hycom_team_project.urls'
@@ -140,3 +141,28 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'bksfabrics@gmail.com'
 EMAIL_HOST_PASSWORD = 'qxaj hvpl mirf grrg'   # NOT your Gmail password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'handlers': {
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': 'error.log',
+        },
+    },
+
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+        '': {  # root logger
+            'handlers': ['file'],
+            'level': 'ERROR',
+        },
+    },
+}

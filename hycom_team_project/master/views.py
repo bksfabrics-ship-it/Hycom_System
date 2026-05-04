@@ -2,12 +2,13 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 import json
+
+from urllib3 import request
 from .models import Order, OrderItem
 from stock.models import Product
 from django.shortcuts import render, redirect
 from django.forms import formset_factory, modelformset_factory
 from .forms import OrderForm, OrderItemForm
-from django.db.models import Sum
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
@@ -23,7 +24,10 @@ from returns.models import Return
 from utils.google_sheets import push_order_to_sheet
 from utils.email_service import send_order_email
 import threading
-from django.db import transaction
+from openpyxl import Workbook
+from django.shortcuts import render
+from datetime import datetime
+from master.models import OrderItem
 
 
 def run_async(func, *args):
@@ -540,4 +544,129 @@ def export_orders(request):
                 item.product.material_code
             ])
 
+    return response
+
+
+def fill_missing(data, key, all_values):
+    """
+    Ensures all categories exist, fills missing with 0
+    """
+    data_dict = {item[key]: item['total'] for item in data}
+
+    final = []
+    for value in all_values:
+        final.append({
+            key: value,
+            'total': data_dict.get(value, 0)
+        })
+    return final
+
+
+def dashboard(request):
+
+    # ✅ MASTER LISTS (YOU CONTROL UI HERE)
+    ALL_STYLES = ['Core', 'Flexi', 'Ethos']
+    ALL_COLORS = ['Wine Red', 'Hunter Green', 'Ceil Blue', 'Navy Blue']
+    ALL_GENDERS = ['Male', 'Female']
+    ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL']
+
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
+
+    items = OrderItem.objects.select_related('product', 'order')
+
+    # ✅ DATE FILTER
+    if from_date and to_date:
+        items = items.filter(order__invoice_date__range=[from_date, to_date])
+
+    # ✅ TOP PRODUCTS
+    top_products = (
+        items.values('product__name', 'product__sku')
+        .annotate(total_qty=Sum('quantity'))
+        .order_by('-total_qty')[:10]
+    )
+
+    # =========================
+    # RAW QUERYSETS
+    # =========================
+
+    style_qs = (
+        items.values('product__style')
+        .exclude(product__style__isnull=True)
+        .exclude(product__style__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    color_qs = (
+        items.values('product__color')
+        .exclude(product__color__isnull=True)
+        .exclude(product__color__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    gender_qs = (
+        items.values('product__gender')
+        .exclude(product__gender__isnull=True)
+        .exclude(product__gender__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    size_qs = (
+        items.values('product__size')
+        .exclude(product__size__isnull=True)
+        .exclude(product__size__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    # =========================
+    # FILL MISSING VALUES
+    # =========================
+
+    style_data = fill_missing(list(style_qs), 'product__style', ALL_STYLES)
+    color_data = fill_missing(list(color_qs), 'product__color', ALL_COLORS)
+    gender_data = fill_missing(list(gender_qs), 'product__gender', ALL_GENDERS)
+    size_data = fill_missing(list(size_qs), 'product__size', ALL_SIZES)
+
+    # =========================
+    # CONTEXT
+    # =========================
+
+    context = {
+        'top_products': top_products,
+        'style_data': style_data,
+        'color_data': color_data,
+        'gender_data': gender_data,
+        'size_data': size_data,
+    }
+
+    return render(request, 'dashboard.html', context)
+
+
+
+
+def export_dashboard_excel(request):
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Dashboard"
+
+    ws.append(["Product", "SKU", "Qty"])
+
+    items = OrderItem.objects.values(
+        'product__name', 'product__sku'
+    ).annotate(total=Sum('quantity'))
+
+    for i in items:
+        ws.append([
+            i['product__name'],
+            i['product__sku'],
+            i['total']
+        ])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=dashboard.xlsx'
+
+    wb.save(response)
     return response

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import get_orders, create_order_ui, get_product_by_sku, dashboard, order_list, edit_order, delete_order, export_orders
+from .views import get_orders, create_order_ui, get_product_by_sku, dashboard, order_list, edit_order, delete_order, export_orders, export_dashboard_excel
 
 urlpatterns = [
     # path('orders/create/', create_order),
@@ -12,5 +12,6 @@ urlpatterns = [
     path('api/get-product-by-sku/', get_product_by_sku),
     path('', dashboard),
     path('order-export/', export_orders),
+    path('dashboard_export/', export_dashboard_excel),
 
 ]

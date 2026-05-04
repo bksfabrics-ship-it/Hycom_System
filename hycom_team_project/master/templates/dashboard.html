@@ -2,117 +2,235 @@
 
 {% block content %}
 
+<style>
+.body {
+    background: #f4f6fb;
+}
+
+/* CARDS */
+.card {
+    background: #e0e5f3;
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 2px 8px #0000000d;
+}
+
+/* KPI */
+.kpi {
+    padding: 20px;
+    text-align: center;
+}
+.kpi h6 {
+    color: #6b7280;
+    margin-bottom: 5px;
+}
+.kpi h2 {
+    font-weight: 700;
+}
+
+/* CHART SIZE FIX */
+.chart-box {
+    height: 250px;
+}
+
+/* TABLE */
+.table thead {
+    background: #d8e2eb;
+}
+.table tbody tr:hover {
+    background: #e0e8f5;
+}
+</style>
+
 <div class="container-fluid">
 
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3>Dashboard</h3>
+    <div class="d-flex justify-content-between mb-3">
+        <h3>📊 Dashboard</h3>
+        <a href="/api/dashboard_export/" class="btn btn-success">
+            ⬇ Download Excel
+        </a>
     </div>
 
-    <!-- TOP CARDS -->
-    <div class="row g-3 mb-4">
+    <!-- FILTER -->
+    <div class="card p-3 mb-3">
+        <form method="get" class="row g-3 align-items-end">
 
-        <div class="col-md-3">
-            <div class="card shadow-sm p-3 text-center">
+            <div class="col-md-3">
+                <label>From</label>
+                <input type="date" name="from_date" class="form-control"
+                       value="{{ request.GET.from_date }}">
+            </div>
+
+            <div class="col-md-3">
+                <label>To</label>
+                <input type="date" name="to_date" class="form-control"
+                       value="{{ request.GET.to_date }}">
+            </div>
+
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100">Filter</button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- KPI ROW -->
+    <div class="row g-3 mb-3">
+
+        <div class="col-md-4">
+            <div class="card kpi">
                 <h6>Total Products</h6>
-                <h2>{{ total_products }}</h2>
+                <h2 class="text-primary">{{ total_products }}</h2>
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card shadow-sm p-3 text-center">
+        <div class="col-md-4">
+            <div class="card kpi">
                 <h6>Total Orders</h6>
-                <h2>{{ total_orders }}</h2>
+                <h2 class="text-success">{{ total_orders }}</h2>
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card shadow-sm p-3 text-center">
+        <div class="col-md-4">
+            <div class="card kpi">
                 <h6>Total Stock</h6>
-                <h2>{{ total_stock }}</h2>
+                <h2 class="text-warning">{{ total_stock }}</h2>
             </div>
         </div>
 
     </div>
 
-    <!-- LOW STOCK SECTION -->
-    <div class="card shadow-sm p-3 mb-4">
-        <h5>⚠ Low Stock Products (≤ 5)</h5>
+    <!-- CHARTS -->
+    <div class="row g-3 mb-3">
 
-        <div class="table-responsive mt-2">
-            <table class="table table-bordered text-center align-middle">
-
-                <thead class="table-light">
-                    <tr>
-                        <th>Product</th>
-                        <th>SKU</th>
-                        <th>Stock</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for p in low_stock_products %}
-                    <tr>
-                        <td>{{ p.name }}</td>
-                        <td>{{ p.sku }}</td>
-                        <td>
-                            <span class="badge bg-danger">{{ p.stock }}</span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="3">No low stock items</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-
-            </table>
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h6>Style Wise</h6>
+                <div class="chart-box">
+                    <canvas id="styleChart"></canvas>
+                </div>
+            </div>
         </div>
+
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h6>Color Wise</h6>
+                <div class="chart-box">
+                    <canvas id="colorChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h6>Gender Wise</h6>
+                <div class="chart-box">
+                    <canvas id="genderChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h6>Size Wise</h6>
+                <div class="chart-box">
+                    <canvas id="sizeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- RECENT ORDERS -->
-    <div class="card shadow-sm p-3">
-        <h5>Recent Orders</h5>
+    <!-- TOP PRODUCTS -->
+    <div class="card p-3 mb-3">
+        <h5>🔥 Top Selling Products</h5>
 
-        <div class="table-responsive mt-2">
-            <table class="table table-bordered text-center align-middle">
-
-                <thead class="table-light">
-                    <tr>
-                        <th>Order No</th>
-                        <th>Customer</th>
-                        <th>Status</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for o in recent_orders %}
-                    <tr>
-                        <td>{{ o.order_number }}</td>
-                        <td>{{ o.customer_name }}</td>
-                        <td>
-                            {% if o.status == "Pending" %}
-                                <span class="badge bg-warning text-dark">Pending</span>
-                            {% elif o.status == "Dispatched" %}
-                                <span class="badge bg-success">Dispatched</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ o.status }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ o.total_amount }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4">No orders yet</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-
-            </table>
-        </div>
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>SKU</th>
+                    <th>Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in top_products %}
+                <tr>
+                    <td>{{ p.product__name }}</td>
+                    <td>{{ p.product__sku }}</td>
+                    <td>{{ p.total_qty }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3">No data</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
 </div>
+
+{{ style_data|json_script:"style-data" }}
+{{ color_data|json_script:"color-data" }}
+{{ gender_data|json_script:"gender-data" }}
+{{ size_data|json_script:"size-data" }}
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+function createChart(id, data, labelField) {
+
+    if (!data || data.length === 0) return;
+
+    const colors = [
+        '#3b82f6', // blue
+        '#10b981', // green
+        '#f59e0b', // orange
+        '#ef4444', // red
+        '#8b5cf6', // purple
+        '#06b6d4', // cyan
+        '#84cc16', // lime
+        '#f97316'  // deep orange
+    ];
+
+    new Chart(document.getElementById(id), {
+        type: 'bar',
+        data: {
+            labels: data.map(x => x[labelField] || 'N/A'),
+            datasets: [{
+                data: data.map(x => x.total),
+
+                // ✅ KEY CHANGE
+                backgroundColor: data.map((_, i) => colors[i % colors.length]),
+
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+const styleData = JSON.parse(document.getElementById('style-data').textContent);
+const colorData = JSON.parse(document.getElementById('color-data').textContent);
+const genderData = JSON.parse(document.getElementById('gender-data').textContent);
+const sizeData = JSON.parse(document.getElementById('size-data').textContent);
+
+createChart('styleChart', styleData, 'product__style');
+createChart('colorChart', colorData, 'product__color');
+createChart('genderChart', genderData, 'product__gender');
+createChart('sizeChart', sizeData, 'product__size');
+
+</script>
 
 {% endblock %}

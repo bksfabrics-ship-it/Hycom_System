@@ -128,6 +128,82 @@
         .dataTables_wrapper .dataTables_paginate {
             margin-top: 10px;
         }
+        .sidebar {
+            width: 240px;
+            height: 100vh;
+            position: fixed;
+            background: #111827;
+            color: #e5e7eb;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* LOGO */
+        .logo {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #374151;
+        }
+
+        .logo h4 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .logo small {
+            color: #9ca3af;
+        }
+
+        /* MENU */
+        .menu {
+            padding: 10px 0;
+            flex-grow: 1;
+        }
+
+        /* SECTION TITLE */
+        .menu-title {
+            padding: 10px 20px;
+            font-size: 11px;
+            color: #9ca3af;
+            letter-spacing: 1px;
+        }
+
+        /* MENU ITEMS */
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            text-decoration: none;
+            color: #cbd5e1;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        /* ICON */
+        .menu-item span {
+            font-size: 16px;
+        }
+
+        /* HOVER */
+        .menu-item:hover {
+            background: #1f2937;
+            color: white;
+            padding-left: 24px;
+        }
+
+        /* ACTIVE LINK */
+        .menu-item.active {
+            background: #2563eb;
+            color: white;
+            border-left: 4px solid #60a5fa;
+        }
+
+        /* CONTENT SHIFT */
+        .content {
+            margin-left: 240px;
+            padding: 20px;
+        }
     </style>
 </head>
 
@@ -135,21 +211,39 @@
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-    <h4>Hycom</h4>
 
-    <a href="/api/">📊 Dashboard</a>
-    <a href="/api/order_list/">📦 Orders</a>
-    <a href="/stock/products/">🧾 Products</a>
-    
-    <hr style="border-color:#374151;">
-
-    <div style="padding-left:20px; font-size:12px; color:#9ca3af;">
-        REPORTS
+    <!-- LOGO -->
+    <div class="logo">
+        <h4>Hycom</h4>
+        <small>Management System</small>
     </div>
 
-    <a href="/reports/order_report/">📊 Order Report</a>
-    <a href="/reports/return_report/">🔁 Return Report</a>
-    <a href="/reports/stock_report/">📦 Stock Report</a>
+    <!-- MENU -->
+    <div class="menu">
+
+        <a href="/api/" class="menu-item active">
+            <span>📊</span> Dashboard
+        </a>
+
+        <a href="/api/order_list/" class="menu-item">
+            <span>📦</span> Orders
+        </a>
+
+        <a href="/stock/products/" class="menu-item">
+            <span>🧾</span> Products
+        </a>
+
+        <a href="javascript:void(0);" onclick="toggleReports()" id="reportsToggle">
+            📊 Reports ▼
+        </a>
+
+        <div id="reportsMenu" style="display:none; padding-left:15px;">
+            <a href="/reports/order_report/">Order Report</a>
+            <a href="/reports/return_report/">Return Report</a>
+            <a href="/reports/stock_report/">Stock Report</a>
+        </div>
+
+    </div>
 </div>
 
 <!-- MAIN CONTENT -->
@@ -165,5 +259,33 @@
     {% endblock %}
 </div>
 
+<script>
+function toggleReports() {
+    let menu = document.getElementById("reportsMenu");
+    let arrow = document.getElementById("arrow");
+
+    if (menu.style.display === "none") {
+        menu.style.display = "block";
+        arrow.innerHTML = "▲";
+        localStorage.setItem("reportsMenuOpen", "true");
+    } else {
+        menu.style.display = "none";
+        arrow.innerHTML = "▼";
+        localStorage.setItem("reportsMenuOpen", "false");
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    let menu = document.getElementById("reportsMenu");
+    let arrow = document.getElementById("arrow");
+
+    let savedState = localStorage.getItem("reportsMenuOpen");
+
+    if (savedState === "true" || window.location.pathname.includes("/reports/")) {
+        menu.style.display = "block";
+        arrow.innerHTML = "▲";
+    }
+});
+</script>
 </body>
 </html>
