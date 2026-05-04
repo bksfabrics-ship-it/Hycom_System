@@ -182,16 +182,19 @@ function createChart(id, data, labelField) {
 
     if (!data || data.length === 0) return;
 
+    // Generic colors for other charts
     const colors = [
-        '#3b82f6', // blue
-        '#10b981', // green
-        '#f59e0b', // orange
-        '#ef4444', // red
-        '#8b5cf6', // purple
-        '#06b6d4', // cyan
-        '#84cc16', // lime
-        '#f97316'  // deep orange
+        '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+        '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'
     ];
+
+    // Color mapping for colorChart - matches product colors
+    const colorMap = {
+        'Wine Red': '#8B0000',
+        'Hunter Green': '#355E3B',
+        'Ceil Blue': '#87CEEB',
+        'Navy Blue': '#000080'
+    };
 
     new Chart(document.getElementById(id), {
         type: 'bar',
@@ -199,22 +202,44 @@ function createChart(id, data, labelField) {
             labels: data.map(x => x[labelField] || 'N/A'),
             datasets: [{
                 data: data.map(x => x.total),
-
-                // ✅ KEY CHANGE
-                backgroundColor: data.map((_, i) => colors[i % colors.length]),
-
-                borderRadius: 6
+                backgroundColor: (labelField === 'product__color') ?
+                    data.map(item => colorMap[item[labelField]] || '#9CA3AF') :
+                    data.map((_, i) => colors[i % colors.length]),
+                borderRadius: 6,
+                borderWidth: 1
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
+plugins: {
+                legend: { 
+                    display: (labelField === 'product__color')
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed.y}`;
+                        }
+                    }
+                },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'top',
+                    formatter: function(value) {
+                        return value > 0 ? value : '';
+                    },
+                    font: {
+                        size: 12,
+                        weight: 'bold'
+                    },
+                    color: 'black'
+                }
             },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: { font: { size: 12 } }
                 }
             }
         }

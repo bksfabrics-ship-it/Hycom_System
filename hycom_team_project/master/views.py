@@ -426,22 +426,94 @@ def create_order_ui(request):
 
 
 def dashboard(request):
-
+    from stock.models import Product
+    # KPIs - filtered orders
     total_products = Product.objects.count()
-    total_orders = Order.objects.count()
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
+    if from_date and to_date:
+        total_orders = Order.objects.filter(invoice_date__range=[from_date, to_date]).count()
+    else:
+        total_orders = Order.objects.count()
     total_stock = Product.objects.aggregate(total=Sum('stock'))['total'] or 0
 
-    low_stock_products = Product.objects.filter(stock__lte=5)
+    # ✅ MASTER LISTS
+    ALL_STYLES = ['Core', 'Flexi', 'Ethos']
+    ALL_COLORS = ['Wine Red', 'Hunter Green', 'Ceil Blue', 'Navy Blue']
+    ALL_GENDERS = ['Male', 'Female']
+    ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL']
 
-    recent_orders = Order.objects.all().order_by('-id')[:5]
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
 
-    return render(request, 'dashboard.html', {
+    items = OrderItem.objects.select_related('product', 'order')
+
+    # ✅ DATE FILTER
+    if from_date and to_date:
+        items = items.filter(order__invoice_date__range=[from_date, to_date])
+
+    # ✅ TOP PRODUCTS
+    top_products = (
+        items.values('product__name', 'product__sku')
+        .annotate(total_qty=Sum('quantity'))
+        .order_by('-total_qty')[:10]
+    )
+
+    # RAW QUERYSETS
+    style_qs = (
+        items.values('product__style')
+        .exclude(product__style__isnull=True)
+        .exclude(product__style__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    color_qs = (
+        items.values('product__color')
+        .exclude(product__color__isnull=True)
+        .exclude(product__color__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    gender_qs = (
+        items.values('product__gender')
+        .exclude(product__gender__isnull=True)
+        .exclude(product__gender__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    size_qs = (
+        items.values('product__size')
+        .exclude(product__size__isnull=True)
+        .exclude(product__size__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    # FILL MISSING
+    def fill_missing(data, key, all_values):
+        data_dict = {item[key]: item['total'] for item in data}
+        final = []
+        for value in all_values:
+            final.append({key: value, 'total': data_dict.get(value, 0)})
+        return final
+
+    style_data = fill_missing(list(style_qs), 'product__style', ALL_STYLES)
+    color_data = fill_missing(list(color_qs), 'product__color', ALL_COLORS)
+    gender_data = fill_missing(list(gender_qs), 'product__gender', ALL_GENDERS)
+    size_data = fill_missing(list(size_qs), 'product__size', ALL_SIZES)
+
+    context = {
         'total_products': total_products,
         'total_orders': total_orders,
         'total_stock': total_stock,
-        'low_stock_products': low_stock_products,
-        'recent_orders': recent_orders
-    })
+        'top_products': top_products,
+        'style_data': style_data,
+        'color_data': color_data,
+        'gender_data': gender_data,
+        'size_data': size_data,
+    }
+
+    return render(request, 'dashboard.html', context)
+
     
     
 
@@ -563,11 +635,17 @@ def fill_missing(data, key, all_values):
 
 
 def dashboard(request):
+    from stock.models import Product
+    
+    # KPIs
+    total_products = Product.objects.count()
+    total_orders = Order.objects.count()
+    total_stock = Product.objects.aggregate(total=Sum('stock'))['total'] or 0
 
-    # ✅ MASTER LISTS (YOU CONTROL UI HERE)
+    # ✅ MASTER LISTS
     ALL_STYLES = ['Core', 'Flexi', 'Ethos']
     ALL_COLORS = ['Wine Red', 'Hunter Green', 'Ceil Blue', 'Navy Blue']
-    ALL_GENDERS = ['Male', 'Female']
+    ALL_GENDERS = ['Men', 'Women']
     ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL']
 
     from_date = request.GET.get('from_date')
@@ -586,9 +664,90 @@ def dashboard(request):
         .order_by('-total_qty')[:10]
     )
 
-    # =========================
     # RAW QUERYSETS
-    # =========================
+    style_qs = (
+        items.values('product__style')
+        .exclude(product__style__isnull=True)
+        .exclude(product__style__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    color_qs = (
+        items.values('product__color')
+        .exclude(product__color__isnull=True)
+        .exclude(product__color__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    gender_qs = (
+        items.values('product__gender')
+        .exclude(product__gender__isnull=True)
+        .exclude(product__gender__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    size_qs = (
+        items.values('product__size')
+        .exclude(product__size__isnull=True)
+        .exclude(product__size__exact='')
+        .annotate(total=Sum('quantity'))
+    )
+
+    # FILL MISSING
+    style_data = fill_missing(list(style_qs), 'product__style', ALL_STYLES)
+    color_data = fill_missing(list(color_qs), 'product__color', ALL_COLORS)
+    gender_data = fill_missing(list(gender_qs), 'product__gender', ALL_GENDERS)
+    size_data = fill_missing(list(size_qs), 'product__size', ALL_SIZES)
+
+    context = {
+        'total_products': total_products,
+        'total_orders': total_orders,
+        'total_stock': total_stock,
+        'top_products': top_products,
+        'style_data': style_data,
+        'color_data': color_data,
+        'gender_data': gender_data,
+        'size_data': size_data,
+    }
+
+    return render(request, 'dashboard.html', context)
+
+
+
+
+def export_dashboard_excel(request):
+    from stock.models import Product
+    from django.db.models import Sum
+
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
+    
+    # Same logic as dashboard - filtered orders count
+    total_products = Product.objects.count()
+    if from_date and to_date:
+        total_orders = Order.objects.filter(invoice_date__range=[from_date, to_date]).count()
+    else:
+        total_orders = Order.objects.count()
+    total_stock = Product.objects.aggregate(total=Sum('stock'))['total'] or 0
+
+    ALL_STYLES = ['Core', 'Flexi', 'Ethos']
+    ALL_COLORS = ['Wine Red', 'Hunter Green', 'Ceil Blue', 'Navy Blue']
+    ALL_GENDERS = ['Male', 'Female']
+    ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL']
+
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
+
+    items = OrderItem.objects.select_related('product', 'order')
+
+    if from_date and to_date:
+        items = items.filter(order__invoice_date__range=[from_date, to_date])
+
+    top_products = (
+        items.values('product__name', 'product__sku')
+        .annotate(total_qty=Sum('quantity'))
+        .order_by('-total_qty')[:10]
+    )
 
     style_qs = (
         items.values('product__style')
@@ -618,50 +777,96 @@ def dashboard(request):
         .annotate(total=Sum('quantity'))
     )
 
-    # =========================
-    # FILL MISSING VALUES
-    # =========================
-
     style_data = fill_missing(list(style_qs), 'product__style', ALL_STYLES)
     color_data = fill_missing(list(color_qs), 'product__color', ALL_COLORS)
     gender_data = fill_missing(list(gender_qs), 'product__gender', ALL_GENDERS)
     size_data = fill_missing(list(size_qs), 'product__size', ALL_SIZES)
 
-    # =========================
-    # CONTEXT
-    # =========================
-
-    context = {
-        'top_products': top_products,
-        'style_data': style_data,
-        'color_data': color_data,
-        'gender_data': gender_data,
-        'size_data': size_data,
-    }
-
-    return render(request, 'dashboard.html', context)
-
-
-
-
-def export_dashboard_excel(request):
-
+    # Create workbook
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Dashboard"
+    wb.remove(wb.active)  # Remove default sheet
 
-    ws.append(["Product", "SKU", "Qty"])
+    # Summary Sheet
+    ws_summary = wb.create_sheet('Summary')
+    ws_summary.append(['Metric', 'Value'])
+    ws_summary.append(['Total Products', total_products])
+    ws_summary.append(['Total Orders', total_orders])
+    ws_summary.append(['Total Stock', total_stock])
+    ws_summary.append([''])  # spacer
+    ws_summary.append(['Filter Period', f"{from_date or 'All'} to {to_date or 'All'}"])
 
-    items = OrderItem.objects.values(
-        'product__name', 'product__sku'
-    ).annotate(total=Sum('quantity'))
+    # Top Products
+    ws_top = wb.create_sheet('Top Products')
+    ws_top.append(['Product', 'SKU', 'Total Qty'])
+    for p in top_products:
+        ws_top.append([p['product__name'], p['product__sku'], p['total_qty']])
 
-    for i in items:
-        ws.append([
-            i['product__name'],
-            i['product__sku'],
-            i['total']
-        ])
+    # Style Wise
+    ws_style = wb.create_sheet('Style Wise')
+    ws_style.append(['Style', 'Quantity'])
+    total_style = 0
+    for d in style_data:
+        qty = d['total']
+        ws_style.append([d['product__style'], qty])
+        total_style += qty
+    ws_style.append(['TOTAL', total_style])
+
+    # Color Wise
+    ws_color = wb.create_sheet('Color Wise')
+    ws_color.append(['Color', 'Quantity'])
+    total_color = 0
+    for d in color_data:
+        qty = d['total']
+        ws_color.append([d['product__color'], qty])
+        total_color += qty
+    ws_color.append(['TOTAL', total_color])
+
+    # Gender Wise
+    ws_gender = wb.create_sheet('Gender Wise')
+    ws_gender.append(['Gender', 'Quantity'])
+    total_gender = 0
+    for d in gender_data:
+        qty = d['total']
+        ws_gender.append([d['product__gender'], qty])
+        total_gender += qty
+    ws_gender.append(['TOTAL', total_gender])
+
+    # Size Wise
+    ws_size = wb.create_sheet('Size Wise')
+    ws_size.append(['Size', 'Quantity'])
+    total_size = 0
+    for d in size_data:
+        qty = d['total']
+        ws_size.append([d['product__size'], qty])
+        total_size += qty
+    ws_size.append(['TOTAL', total_size])
+
+    # Auto-fit columns
+    for ws in [ws_summary, ws_top, ws_style, ws_color, ws_gender, ws_size]:
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+
+    # Make headers bold
+    from openpyxl.styles import Font
+    bold_font = Font(bold=True)
+    for ws in [ws_summary, ws_top, ws_style, ws_color, ws_gender, ws_size]:
+        # Bold headers (row 1)
+        for cell in ws[1]:
+            cell.font = bold_font
+        # Bold TOTAL row if exists (last row)
+        last_row = len([row for row in ws.rows])  # materialize to list
+        if last_row > 1 and ws.cell(row=last_row, column=1).value == 'TOTAL':
+            for cell in ws[last_row]:
+                cell.font = bold_font
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
