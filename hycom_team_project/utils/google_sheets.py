@@ -67,6 +67,7 @@ def push_order_to_sheet(order):
             order.gst_number if order.is_b2b else '',
             order.status or '',
             item.product.sku or '',
+            item.product.material_code or '',
             qty,
             taxable,
             tax,

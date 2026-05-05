@@ -233,8 +233,8 @@
             <span>🧾</span> Products
         </a>
 
-        <a href="javascript:void(0);" onclick="toggleReports()" id="reportsToggle">
-            📊 Reports ▼
+        <a href="javascript:void(0);" onclick="toggleReports()" id="reportsToggle" class="menu-item">
+            <span>📊</span> Reports ▼
         </a>
 
         <div id="reportsMenu" style="display:none; padding-left:15px;">
@@ -276,14 +276,30 @@ function toggleReports() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+    // Toggle reports menu state
     let menu = document.getElementById("reportsMenu");
-    let arrow = document.getElementById("arrow");
-
+    let reportsToggle = document.getElementById("reportsToggle");
     let savedState = localStorage.getItem("reportsMenuOpen");
-
     if (savedState === "true" || window.location.pathname.includes("/reports/")) {
         menu.style.display = "block";
-        arrow.innerHTML = "▲";
+        reportsToggle.innerHTML = "📊 Reports ▲";
+    }
+
+    // Active menu highlighting
+    const path = window.location.pathname;
+    document.querySelectorAll('.menu-item').forEach(link => {
+        link.classList.remove('active');
+    });
+    if (path === '/api/' || path === '/') {
+        document.querySelector('a[href="/api/"]').classList.add('active');
+    } else if (path.includes('order_list') || path.includes('/orders/')) {
+        document.querySelector('a[href="/api/order_list/"]').classList.add('active');
+    } else if (path.includes('/stock/')) {
+        document.querySelector('a[href="/stock/products/"]').classList.add('active');
+    } else if (path.includes('/reports/')) {
+        document.getElementById('reportsToggle').classList.add('active');
+        document.getElementById("reportsMenu").style.display = "block";
+        document.getElementById("reportsToggle").innerHTML = '<span>📊</span> Reports ▲';
     }
 });
 </script>

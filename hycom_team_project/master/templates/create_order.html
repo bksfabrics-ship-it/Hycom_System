@@ -92,8 +92,8 @@
             <label>Order Number</label>
             {{ order_form.order_number }}
             {% if order_form.order_number.errors %}
-            <div class="alert alert-danger">
-                {{ order_form.order_number.errors }}
+            <div class="invalid-feedback d-block">
+                {{ order_form.order_number.errors.0 }}
             </div>
             {% endif %}
         </div>

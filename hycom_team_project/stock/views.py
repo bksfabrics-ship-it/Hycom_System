@@ -1,7 +1,10 @@
+import logging
 from django.shortcuts import render
 from django.db.models import Q
 from .models import Product
 # Create your views here.
+
+logger = logging.getLogger(__name__)
 from django.shortcuts import render, redirect
 from .forms import ProductForm
 from django.contrib import messages
@@ -17,6 +20,8 @@ def create_product(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Product saved successfully")
+            user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+            logger.info(f"Product created: {form.instance.sku} ({form.instance.name}) by user {user}")
             return redirect('/stock/product/add/')
 
     else:
@@ -53,6 +58,8 @@ def edit_product(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Product updated successfully")
+            user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+            logger.info(f"Product updated: {form.instance.sku} ({form.instance.name}) by user {user}")
             return redirect('/stock/products/')
         else:
             messages.error(request, "Please fix errors")
@@ -92,6 +99,23 @@ def get_product_by_sku(request):
     
     
     
+def export_products(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="products.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Name', 'SKU', 'Material Code', 'Style', 'Gender', 'Color', 'Size', 'Category', 'Warehouse', 'Stock', 'Selling Price', 'Status'])
+    
+    products = Product.objects.all().values_list(
+        'name', 'sku', 'material_code', 'style', 'gender', 'color', 'size', 
+        'category', 'warehouse', 'stock', 'selling_price', 'is_active'
+    )
+    
+    writer.writerows(products)
+    
+    return response
+
+
 import pandas as pd
 from django.shortcuts import render, redirect
 from django.contrib import messages

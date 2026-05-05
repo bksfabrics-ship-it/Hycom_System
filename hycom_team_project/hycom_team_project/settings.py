@@ -54,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.error_middleware.GlobalExceptionMiddleware',
+    'utils.activity_middleware.ActivityMiddleware',
 ]
 
 ROOT_URLCONF = 'hycom_team_project.urls'
@@ -152,17 +153,22 @@ LOGGING = {
             'class': 'logging.FileHandler',
             'filename': 'error.log',
         },
+        'activity_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'activity.log',
+        },
     },
 
     'loggers': {
         'django': {
-            'handlers': ['file'],
-            'level': 'ERROR',
+            'handlers': ['file', 'activity_file'],
+            'level': 'INFO',
             'propagate': True,
         },
         '': {  # root logger
-            'handlers': ['file'],
-            'level': 'ERROR',
+            'handlers': ['file', 'activity_file'],
+            'level': 'INFO',
         },
     },
 }

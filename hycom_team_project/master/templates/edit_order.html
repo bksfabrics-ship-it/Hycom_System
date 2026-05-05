@@ -69,7 +69,11 @@
         <div class="col-md-3">
             <label>Order Number</label>
             {{ order_form.order_number }}
-            {{ order_form.order_number.errors }}
+            {% if order_form.order_number.errors %}
+            <div class="invalid-feedback d-block">
+                {{ order_form.order_number.errors.0 }}
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-md-3">

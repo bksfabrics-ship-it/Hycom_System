@@ -1,3 +1,5 @@
+import logging
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
@@ -28,7 +30,7 @@ from openpyxl import Workbook
 from django.shortcuts import render
 from datetime import datetime
 from master.models import OrderItem
-
+logger = logging.getLogger(__name__)
 
 def run_async(func, *args):
     thread = threading.Thread(target=func, args=args, daemon=True)
@@ -261,6 +263,8 @@ def edit_order(request, pk):
                         return redirect(f'/returns/create/?order_id={order.id}')
 
                     messages.success(request, "Order updated successfully")
+                    user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+                    logger.info(f"Order updated: {order.order_number} (status: {order.status}) by user {user}")
                     return redirect('/api/order_list/')
 
             except Exception as e:
@@ -390,10 +394,10 @@ def create_order_ui(request):
                     order.save()
                     
                     
-                    # try:
-                    #     transaction.on_commit(lambda: run_async(send_order_email, order, True))
-                    # except Exception as e:
-                    #     print("Email failed:", e)
+                    try:
+                        transaction.on_commit(lambda: run_async(send_order_email, order, True))
+                    except Exception as e:
+                        print("Email failed:", e)
                     
                     try:
                         transaction.on_commit(lambda: run_async(push_order_to_sheet, order))
@@ -403,6 +407,8 @@ def create_order_ui(request):
                         traceback.print_exc()
                         
                 messages.success(request, "Order saved successfully")
+                user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+                logger.info(f"Order created: {order.order_number} by user {user}")
                 return redirect('/api/order_list/')
 
             except Exception as e:
@@ -574,6 +580,8 @@ def delete_order(request, pk):
     order.delete()
 
     messages.success(request, "Order deleted successfully")
+    user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+    logger.info(f"Order deleted: {order.order_number} by user {user}")
     return redirect('/api/order_list/')
 
 
