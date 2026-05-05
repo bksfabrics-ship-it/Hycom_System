@@ -99,7 +99,7 @@ from .models import Product
 
 REQUIRED_COLUMNS = [
     'name', 'sku', 'material_code', 'style',
-    'gender', 'color', 'size', 'category',
+    'gender', 'color', 'size', 'category', 'warehouse',
     'stock', 'selling_price'
 ]
 
@@ -168,6 +168,7 @@ def bulk_upload_products(request):
                             'color': str(row['color']).strip(),
                             'size': str(row['size']).strip(),
                             'category': str(row['category']).strip(),
+                            'warehouse': str(row.get('warehouse', 'Hycom')).strip(),
                             'stock': int(row.get('stock', 0)),
                             'selling_price': float(row.get('selling_price', 0)),
                             'is_active': True
@@ -207,12 +208,12 @@ def download_sample_products(request):
 
     writer.writerow([
         'name','sku','material_code','style','gender',
-        'color','size','category','stock','selling_price'
+        'color','size','category','warehouse','stock','selling_price'
     ])
 
     writer.writerow([
         'Flexi Scrub Top','HY-FLEXI-W-BL-XS','MC001','Flexi',
-        'Female','Blue','XS','Medical Scrubs','50','799'
+        'Female','Blue','XS','Medical Scrubs','Hycom','50','799'
     ])
 
     return response

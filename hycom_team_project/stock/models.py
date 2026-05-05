@@ -36,6 +36,12 @@ class Product(models.Model):
         ('Inner Scrubs', 'Inner Scrubs'),
     ]
 
+    WAREHOUSE_CHOICES = [
+        ('Hycom', 'Hycom'),
+        ('Amazon', 'Amazon'),
+        ('Flipkart', 'Flipkart'),
+    ]
+
     # Basic Info
     name = models.CharField(max_length=200)
     sku = models.CharField(max_length=100, unique=True)
@@ -49,6 +55,7 @@ class Product(models.Model):
 
     # Category (optional but useful)
     category = models.CharField(max_length=100)
+    warehouse = models.CharField(max_length=20, choices=WAREHOUSE_CHOICES, blank=False, default='Hycom')
 
     # Stock
     stock = models.IntegerField(default=0)

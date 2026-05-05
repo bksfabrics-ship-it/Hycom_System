@@ -9,6 +9,7 @@
         <tr>
             <th>SKU</th>
             <th>Product</th>
+            <th>Warehouse</th>
             <th>Available Stock</th>
             {% comment %} <th>Ordered Qty</th>
             <th>Returned Qty</th>
@@ -20,7 +21,7 @@
         <tr>
             <td>{{ p.sku }}</td>
             <td>{{ p.name }}</td>
-
+            <td>{{ p.warehouse }}</td>
             <td>{{ p.stock }}</td>
 
             {% comment %} <td>{{ p.ordered_qty|default:0 }}</td>

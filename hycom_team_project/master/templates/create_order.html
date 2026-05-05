@@ -78,6 +78,16 @@
             {% endif %}
         </div>
 
+        <div class="col-md-3" id="ship_date_field">
+            <label>Ship Date</label>
+            {{ order_form.ship_date }}
+            {% if order_form.ship_date.errors %}
+            <div class="alert alert-danger">
+                {{ order_form.ship_date.errors }}
+            </div>
+            {% endif %}
+        </div>
+
         <div class="col-md-3">
             <label>Order Number</label>
             {{ order_form.order_number }}
@@ -258,12 +268,15 @@ document.addEventListener('change', function(e) {
     }
 
 });
+
 document.addEventListener("DOMContentLoaded", function () {
 
     let portal = document.getElementById("id_portal");
     let fulfilment = document.getElementById("id_fulfilment");
     let b2b = document.getElementById("id_is_b2b");
     let gstField = document.getElementById("gst_field");
+    const statusField = document.getElementById("id_status");
+    const shipDateField = document.getElementById("ship_date_field");
 
     function updateFulfilment() {
 
@@ -294,11 +307,22 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function toggleShipDate() {
+        const status = statusField.value.trim();
+        if (status === "Shipped") {
+            shipDateField.style.display = "block";
+        } else {
+            shipDateField.style.display = "none";
+        }
+    }
+
     updateFulfilment();
     toggleGST();
+    toggleShipDate();
 
     portal.addEventListener("change", updateFulfilment);
     if (b2b) b2b.addEventListener("change", toggleGST);
+    if (statusField) statusField.addEventListener("change", toggleShipDate);
 
 });
 

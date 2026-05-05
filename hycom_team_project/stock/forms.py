@@ -26,13 +26,20 @@ class ProductForm(forms.ModelForm):
     ('XL', 'XL'),
     ('XXL', 'XXL'),]
 
+    WAREHOUSE_CHOICES = [
+    ('Hycom', 'Hycom'),
+    ('Amazon', 'Amazon'),
+    ('Flipkart', 'Flipkart'),
+    ]
+
     style = forms.ChoiceField(choices=STYLE_CHOICES)
     gender = forms.ChoiceField(choices=GENDER_CHOICES)
     color = forms.ChoiceField(choices=COLOR_CHOICES)
     size = forms.ChoiceField(choices=SIZE_CHOICES)
+    warehouse = forms.ChoiceField(choices=WAREHOUSE_CHOICES)
     class Meta:
         model = Product
         fields = [
             'name', 'sku', 'material_code', 'style', 'gender', 'color', 'size',
-            'category', 'stock', 'selling_price', 'is_active'
+            'category', 'warehouse', 'stock', 'selling_price', 'is_active'
         ]

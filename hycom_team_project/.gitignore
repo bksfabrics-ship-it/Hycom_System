@@ -35,6 +35,9 @@ build/
 dist/
 *.egg-info/
 
+# BlackboxAI TODO files
+TODO*.md
+
 # Cache
 *.cache
 
