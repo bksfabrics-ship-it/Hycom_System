@@ -19,8 +19,16 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Built-in auth
+    path('accounts/', include('django.contrib.auth.urls')),
+
+    # Custom employee registration + password change
+    path('accounts/custom/', include('accounts.urls')),
+
     path('api/', include('master.urls')),
     path('stock/', include('stock.urls')),
     path('returns/', include('returns.urls')),
     path('reports/', include('reports.urls')),
 ]
+

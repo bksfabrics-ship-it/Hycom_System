@@ -248,6 +248,17 @@
 
 <!-- MAIN CONTENT -->
 <div class="content">
+    {% if user.is_authenticated %}
+        <div class="mb-3">
+            Logged in as <strong>{{ user.username }}</strong>
+            <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger ms-2">Logout</a>
+        </div>
+    {% else %}
+        <div class="mb-3">
+            <a href="{% url 'login' %}" class="btn btn-sm btn-outline-primary">Login</a>
+        </div>
+    {% endif %}
+
     {% if messages %}
     {% for message in messages %}
         <div class="alert alert-{{ message.tags }}">
@@ -258,6 +269,7 @@
     {% block content %}
     {% endblock %}
 </div>
+
 
 <script>
 function toggleReports() {

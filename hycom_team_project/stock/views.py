@@ -1,5 +1,4 @@
 import logging
-from django.shortcuts import render
 from django.db.models import Q
 from .models import Product
 # Create your views here.
@@ -12,6 +11,12 @@ from django.http import HttpResponse
 import csv
 
 
+from django.contrib.auth.decorators import login_required
+from utils.permissions import area_required
+
+
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def create_product(request):
 
     if request.method == 'POST':
@@ -31,6 +36,8 @@ def create_product(request):
 
 
 
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def product_list(request):
     query = request.GET.get('q')
 
@@ -50,6 +57,8 @@ def product_list(request):
     
     
     
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def edit_product(request, pk):
     product = Product.objects.get(id=pk)
 
@@ -69,6 +78,8 @@ def edit_product(request, pk):
     return render(request, 'create_product.html', {'form': form, 'product': product})
 
 
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def delete_product(request, pk):
     product = Product.objects.get(id=pk)
     product.delete()
@@ -80,6 +91,8 @@ from django.http import JsonResponse
 from .models import Product
 
 
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def get_product_by_sku(request):
     sku = request.GET.get('sku')
 
@@ -99,6 +112,8 @@ def get_product_by_sku(request):
     
     
     
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def export_products(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="products.csv"'
@@ -128,6 +143,8 @@ REQUIRED_COLUMNS = [
 ]
 
 
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def bulk_upload_products(request):
 
     if request.method == 'POST' and request.FILES.get('file'):
@@ -223,6 +240,8 @@ def bulk_upload_products(request):
 
 
 
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def download_sample_products(request):
 
     response = HttpResponse(content_type='text/csv')

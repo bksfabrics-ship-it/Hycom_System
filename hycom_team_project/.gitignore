@@ -37,7 +37,7 @@ dist/
 
 # BlackboxAI TODO files
 TODO*.md
-
+TODO.md
 # Cache
 *.cache
 

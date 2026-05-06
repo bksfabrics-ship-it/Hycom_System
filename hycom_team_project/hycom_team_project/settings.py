@@ -172,3 +172,17 @@ LOGGING = {
         },
     },
 }
+
+# Auth redirects
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/api/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Accounts app templates (keeps default auth pages working)
+LOGIN_REDIRECT_URL = '/api/'
+
+# Password management routes are custom in accounts app.
+
+

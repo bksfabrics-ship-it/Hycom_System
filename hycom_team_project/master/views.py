@@ -58,8 +58,23 @@ def update_stock_for_order(order, reverse=False):
 
 
 
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+
+def is_staff_user(user):
+    return user.is_authenticated and user.is_staff
+
+
+def staff_or_owner_required(view_func):
+    return user_passes_test(is_staff_user, login_url='/accounts/login/')(view_func)
+
+
+@staff_or_owner_required
+@login_required(login_url='/accounts/login/')
 def get_orders(request):
     if request.method == 'GET':
+
+
 
         orders_data = []
 
@@ -152,6 +167,7 @@ def restore_old_stock(order):
 
 
 
+@login_required(login_url='/accounts/login/')
 def edit_order(request, pk):
 
     order_model = Order
@@ -302,6 +318,7 @@ def get_product_by_sku(request):
 
 
 
+@login_required(login_url='/accounts/login/')
 def create_order_ui(request):
 
     ItemFormSet = formset_factory(OrderItemForm, extra=1)
