@@ -448,9 +448,18 @@ def create_order_ui(request):
 
 
 
-def dashboard(request):
+
+
+
+# NOTE: dashboard view below is unprotected in current file due to earlier merge issues.
+
+
+
+
     from stock.models import Product
     # KPIs - filtered orders
+
+
     total_products = Product.objects.count()
     from_date = request.GET.get('from_date')
     to_date = request.GET.get('to_date')

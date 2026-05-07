@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'master.apps.MasterConfig', 
     'stock',
     'returns',
-    'reports'
+    'reports',
+    'accounts'
 ]
 
 MIDDLEWARE = [

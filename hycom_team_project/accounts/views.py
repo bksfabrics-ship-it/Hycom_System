@@ -12,6 +12,7 @@ from .models import EmployeeProfile
 
 
 def employee_register(request):
+
     if request.method == "POST":
         form = EmployeeRegistrationForm(request.POST)
         if form.is_valid():
