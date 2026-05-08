@@ -81,6 +81,9 @@ def user_management(request):
     # (staff can also be allowed depending on can_access_area())
     if not request.user.is_authenticated:
         return redirect('login')
+    
+    if not can_access_area(request.user, 'user_management'):
+        return render(request, '403.html')
 
     if not can_access_area(request.user, 'user_management'):
         messages.error(request, 'You are not allowed to access User Management.')

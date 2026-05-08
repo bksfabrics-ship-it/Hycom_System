@@ -32,6 +32,7 @@ from datetime import datetime
 from master.models import OrderItem
 logger = logging.getLogger(__name__)
 from utils.permissions import area_required
+from utils.permissions import can_access_area
 
 
 def run_async(func, *args):
@@ -71,9 +72,7 @@ def staff_or_owner_required(view_func):
     return user_passes_test(is_staff_user, login_url='/accounts/login/')(view_func)
 
 
-@staff_or_owner_required
-@login_required(login_url='/accounts/login/')
-@area_required('stock', login_url='/accounts/login/')
+@area_required('orders')
 def get_orders(request):
     if request.method == 'GET':
 
@@ -170,8 +169,7 @@ def restore_old_stock(order):
 
 
 
-@login_required(login_url='/accounts/login/')
-@area_required('stock', login_url='/accounts/login/')
+@area_required('orders')
 def edit_order(request, pk):
 
     order_model = Order
@@ -322,8 +320,7 @@ def get_product_by_sku(request):
 
 
 
-@login_required(login_url='/accounts/login/')
-@area_required('stock', login_url='/accounts/login/')
+@area_required('products')
 def create_order_ui(request):
 
     ItemFormSet = formset_factory(OrderItemForm, extra=1)
@@ -543,12 +540,14 @@ def create_order_ui(request):
     
 
 
-@login_required(login_url='/accounts/login/')
-@area_required('stock', login_url='/accounts/login/')
+@area_required('products')
 def order_list(request):
     search  = request.GET.get('q')
     status = request.GET.get('status')
     portal = request.GET.get('portal')
+    
+    if not can_access_area(request.user, 'orders'):
+        return render(request, '403.html')
 
     orders = Order.objects.all().order_by('-id').prefetch_related(Prefetch('items', queryset=OrderItem.objects.select_related('product')))
     
@@ -661,11 +660,13 @@ def fill_missing(data, key, all_values):
         })
     return final
 
-@login_required(login_url='/accounts/login/')
-@area_required('stock', login_url='/accounts/login/')
+
+@area_required('dashboard')
 def dashboard(request):
     from stock.models import Product
     
+    if not can_access_area(request.user, 'dashboard'):
+        return render(request, '403.html')
     # KPIs
     total_products = Product.objects.count()
     total_orders = Order.objects.count()
@@ -738,6 +739,7 @@ def dashboard(request):
         'gender_data': gender_data,
         'size_data': size_data,
     }
+    
 
     return render(request, 'dashboard.html', context)
 

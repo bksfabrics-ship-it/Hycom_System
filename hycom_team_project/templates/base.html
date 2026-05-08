@@ -1,3 +1,4 @@
+{% load permission_tags %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -37,33 +38,86 @@
         }
 
         .sidebar {
-            width: 220px;
+            width: 240px;
             height: 100vh;
             position: fixed;
-            background: #1f2937;
+            background: linear-gradient(180deg, #111827, #1f2937);
+            color: #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.08);
+            overflow-y: auto;
+        }
+
+        /* LOGO */
+        .logo {
+            padding: 22px 20px;
+            text-align: center;
+            border-bottom: 1px solid #374151;
+        }
+
+        .logo h4 {
+            margin: 0;
+            font-weight: 700;
             color: white;
-            padding-top: 20px;
         }
 
-        .sidebar a {
-            display: block;
+        .logo small {
+            color: #9ca3af;
+            font-size: 12px;
+        }
+
+        /* MENU */
+        .menu {
+            padding: 10px 0;
+        }
+
+        /* SECTION TITLE */
+        .menu-title {
+            padding: 15px 20px 8px;
+            font-size: 11px;
+            color: #9ca3af;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* MENU ITEMS */
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             padding: 12px 20px;
-            color: #cbd5e1;
+            margin: 4px 10px;
+            border-radius: 10px;
             text-decoration: none;
+            color: #d1d5db;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            font-weight: 500;
         }
 
-        .sidebar a:hover {
+        /* HOVER */
+        .menu-item:hover {
             background: #374151;
             color: white;
+            transform: translateX(2px);
         }
 
-        .sidebar h4 {
-            text-align: center;
-            margin-bottom: 20px;
+        /* ACTIVE */
+        .menu-item.active {
+            background: #2563eb;
+            color: white;
         }
 
+        /* SUB MENU */
+        .submenu {
+            padding-left: 50px;
+            font-size: 13px;
+        }
+
+        /* CONTENT */
         .content {
-            margin-left: 220px;
+            margin-left: 240px;
             padding: 20px;
         }
         .form-check input[type="checkbox"] {
@@ -128,82 +182,6 @@
         .dataTables_wrapper .dataTables_paginate {
             margin-top: 10px;
         }
-        .sidebar {
-            width: 240px;
-            height: 100vh;
-            position: fixed;
-            background: #111827;
-            color: #e5e7eb;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* LOGO */
-        .logo {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid #374151;
-        }
-
-        .logo h4 {
-            margin: 0;
-            font-weight: 600;
-        }
-
-        .logo small {
-            color: #9ca3af;
-        }
-
-        /* MENU */
-        .menu {
-            padding: 10px 0;
-            flex-grow: 1;
-        }
-
-        /* SECTION TITLE */
-        .menu-title {
-            padding: 10px 20px;
-            font-size: 11px;
-            color: #9ca3af;
-            letter-spacing: 1px;
-        }
-
-        /* MENU ITEMS */
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 20px;
-            text-decoration: none;
-            color: #cbd5e1;
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
-
-        /* ICON */
-        .menu-item span {
-            font-size: 16px;
-        }
-
-        /* HOVER */
-        .menu-item:hover {
-            background: #1f2937;
-            color: white;
-            padding-left: 24px;
-        }
-
-        /* ACTIVE LINK */
-        .menu-item.active {
-            background: #2563eb;
-            color: white;
-            border-left: 4px solid #60a5fa;
-        }
-
-        /* CONTENT SHIFT */
-        .content {
-            margin-left: 240px;
-            padding: 20px;
-        }
     </style>
 </head>
 
@@ -221,58 +199,81 @@
     <!-- MENU -->
     <div class="menu">
 
-        {% if 'dashboard' in sidebar_permissions %}
-            <a href="/api/" class="menu-item">
-                <span>📊</span> Dashboard
-            </a>
+        {% has_permission request.user 'dashboard' as can_dashboard %}
+        {% if can_dashboard %}
+        <a href="/api/" class="menu-item">
+            <span>📊</span>
+            Dashboard
+        </a>
         {% endif %}
 
-        {% if 'orders' in sidebar_permissions %}
-            <a href="/api/order_list/" class="menu-item">
-                <span>📦</span> Orders
-            </a>
+        {% has_permission request.user 'orders' as can_orders %}
+        {% if can_orders %}
+        <a href="/api/order_list/" class="menu-item">
+            <span>📦</span>
+            Orders
+        </a>
         {% endif %}
 
-        {% if 'products' in sidebar_permissions %}
-            <a href="/stock/products/" class="menu-item">
-                <span>🧾</span> Products
-            </a>
+        {% has_permission request.user 'products' as can_products %}
+        {% if can_products %}
+        <a href="/stock/products/" class="menu-item">
+            <span>🧾</span>
+            Products
+        </a>
         {% endif %}
 
-        {% if 'reports' in sidebar_permissions %}
+        {% has_permission request.user 'reports' as can_reports %}
+        {% if can_reports %}
 
-            <a href="javascript:void(0);"
-            onclick="toggleReports()"
-            id="reportsToggle"
-            class="menu-item">
+        <div class="menu-title">
+            REPORTS
+        </div>
 
-                <span>📊</span> Reports ▼
+        <a href="javascript:void(0)"
+        class="menu-item"
+        id="reportsToggle"
+        onclick="toggleReports()">
 
+            <span>📊</span>
+            Reports
+            <span style="margin-left:auto;" id="arrow">▼</span>
+        </a>
+
+        <div id="reportsMenu" style="display:none;">
+
+            <a href="/reports/order_report/"
+            class="menu-item submenu">
+                Order Report
             </a>
 
-            <div id="reportsMenu"
-                style="display:none; padding-left:15px;">
+            <a href="/reports/return_report/"
+            class="menu-item submenu">
+                Return Report
+            </a>
 
-                <a href="/reports/order_report/">
-                    Order Report
-                </a>
+            <a href="/reports/stock_report/"
+            class="menu-item submenu">
+                Stock Report
+            </a>
 
-                <a href="/reports/return_report/">
-                    Return Report
-                </a>
-
-                <a href="/reports/stock_report/">
-                    Stock Report
-                </a>
-
-            </div>
+        </div>
 
         {% endif %}
 
-        {% if 'user_management' in sidebar_permissions %}
-            <a href="/accounts/custom/users/" class="menu-item">
-                <span>👥</span> User Management
-            </a>
+        {% has_permission request.user 'user_management' as can_users %}
+        {% if can_users %}
+
+        <div class="menu-title">
+            ADMIN
+        </div>
+
+        <a href="/accounts/custom/user-management/"
+        class="menu-item">
+            <span>👥</span>
+            User Management
+        </a>
+
         {% endif %}
 
     </div>
@@ -339,47 +340,64 @@
 
 
 <script>
+
 function toggleReports() {
+
     let menu = document.getElementById("reportsMenu");
     let arrow = document.getElementById("arrow");
 
     if (menu.style.display === "none") {
+
         menu.style.display = "block";
         arrow.innerHTML = "▲";
+
         localStorage.setItem("reportsMenuOpen", "true");
+
     } else {
+
         menu.style.display = "none";
         arrow.innerHTML = "▼";
+
         localStorage.setItem("reportsMenuOpen", "false");
     }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Toggle reports menu state
-    let menu = document.getElementById("reportsMenu");
-    let reportsToggle = document.getElementById("reportsToggle");
-    let savedState = localStorage.getItem("reportsMenuOpen");
-    if (savedState === "true" || window.location.pathname.includes("/reports/")) {
-        menu.style.display = "block";
-        reportsToggle.innerHTML = "📊 Reports ▲";
+
+    const menu = document.getElementById("reportsMenu");
+    const arrow = document.getElementById("arrow");
+
+    /* RESTORE REPORT MENU STATE */
+    if (menu) {
+
+        let savedState = localStorage.getItem("reportsMenuOpen");
+
+        if (
+            savedState === "true" ||
+            window.location.pathname.includes("/reports/")
+        ) {
+
+            menu.style.display = "block";
+
+            if (arrow) {
+                arrow.innerHTML = "▲";
+            }
+        }
     }
 
-    // Active menu highlighting
+    /* ACTIVE MENU */
     const path = window.location.pathname;
+
     document.querySelectorAll('.menu-item').forEach(link => {
-        link.classList.remove('active');
+
+        const href = link.getAttribute('href');
+
+        if (href && path.startsWith(href)) {
+
+            link.classList.add('active');
+        }
     });
-    if (path === '/api/' || path === '/') {
-        document.querySelector('a[href="/api/"]').classList.add('active');
-    } else if (path.includes('order_list') || path.includes('/orders/')) {
-        document.querySelector('a[href="/api/order_list/"]').classList.add('active');
-    } else if (path.includes('/stock/')) {
-        document.querySelector('a[href="/stock/products/"]').classList.add('active');
-    } else if (path.includes('/reports/')) {
-        document.getElementById('reportsToggle').classList.add('active');
-        document.getElementById("reportsMenu").style.display = "block";
-        document.getElementById("reportsToggle").innerHTML = '<span>📊</span> Reports ▲';
-    }
+
 });
 </script>
 </body>

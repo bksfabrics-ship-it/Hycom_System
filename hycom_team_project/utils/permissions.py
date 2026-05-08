@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import redirect
 from django.http import HttpResponseForbidden
 from functools import wraps
-
+from django.contrib import messages
 from accounts.models import AreaPermission
 
 
@@ -12,37 +12,47 @@ def has_group(user, group_name: str) -> bool:
     return user.is_authenticated and user.groups.filter(name=group_name).exists()
 
 
-def can_access_area(user, area_name):
+def can_access_area(user, area):
 
-    # Super admin always allowed
-    if user.is_superuser:
+    # Admin can access everything
+    if user.is_superuser or user.is_staff:
         return True
 
-    # Staff always allowed
-    if user.is_staff:
-        return True
+    if not user.is_authenticated:
+        return False
 
     return AreaPermission.objects.filter(
         user=user,
-        area=area_name
+        area=area
     ).exists()
 
 
-def area_required(area_name, login_url: str = '/accounts/login/'):
-
+def area_required(area_name):
 
     def decorator(view_func):
 
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
 
+            # NOT LOGGED IN
             if not request.user.is_authenticated:
+
+                messages.warning(
+                    request,
+                    "Please login to continue."
+                )
+
                 return redirect('/accounts/login/')
 
+            # NO PERMISSION
             if not can_access_area(request.user, area_name):
-                return HttpResponseForbidden(
-                    "You do not have permission to access this page."
+
+                messages.error(
+                    request,
+                    "You do not have permission to access this module."
                 )
+
+                return redirect('/api/')
 
             return view_func(request, *args, **kwargs)
 

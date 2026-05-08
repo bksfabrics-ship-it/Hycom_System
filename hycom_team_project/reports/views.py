@@ -12,11 +12,10 @@ from django.shortcuts import get_object_or_404
 from django.db.models.functions import TruncDate
 import json
 from django.core.serializers.json import DjangoJSONEncoder
-from utils.permissions import area_required
+from utils.permissions import area_required, can_access_area
 from django.contrib.auth.decorators import login_required
 
-@login_required(login_url='/accounts/login/')
-@area_required('stock', login_url='/accounts/login/')
+@area_required('reports')
 def stock_report(request):
     products = Product.objects.annotate(
         ordered_qty=Sum('orderitem__quantity'),
@@ -28,8 +27,7 @@ def stock_report(request):
 
 
 
-@login_required(login_url='/accounts/login/')
-@area_required('stock', login_url='/accounts/login/')
+@area_required('reports')
 def return_report(request):
     data = ReturnItem.objects.select_related('return_obj', 'product').values(
         'return_obj__order__order_number',
@@ -52,9 +50,7 @@ def return_report(request):
 
 
 
-
-@login_required(login_url='/accounts/login/')
-@area_required('stock', login_url='/accounts/login/')
+@area_required('reports')
 def order_report(request):
     qs = OrderItem.objects.select_related('order', 'product')
 
@@ -63,6 +59,9 @@ def order_report(request):
     end_date = request.GET.get('end_date')
     status = request.GET.get('status')
     search = request.GET.get('search')
+    
+    if not can_access_area(request.user, 'reports'):
+        return render(request, '403.html')
 
     if start_date:
         qs = qs.filter(order__invoice_date__gte=start_date)
