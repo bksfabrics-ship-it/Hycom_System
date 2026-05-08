@@ -12,7 +12,11 @@ from django.shortcuts import get_object_or_404
 from django.db.models.functions import TruncDate
 import json
 from django.core.serializers.json import DjangoJSONEncoder
+from utils.permissions import area_required
+from django.contrib.auth.decorators import login_required
 
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def stock_report(request):
     products = Product.objects.annotate(
         ordered_qty=Sum('orderitem__quantity'),
@@ -24,7 +28,8 @@ def stock_report(request):
 
 
 
-
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def return_report(request):
     data = ReturnItem.objects.select_related('return_obj', 'product').values(
         'return_obj__order__order_number',
@@ -48,7 +53,8 @@ def return_report(request):
 
 
 
-
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def order_report(request):
     qs = OrderItem.objects.select_related('order', 'product')
 

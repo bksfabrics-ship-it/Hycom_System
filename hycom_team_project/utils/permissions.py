@@ -1,34 +1,53 @@
 from functools import wraps
 
 from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import redirect
+from django.http import HttpResponseForbidden
+from functools import wraps
+
+from accounts.models import AreaPermission
 
 
 def has_group(user, group_name: str) -> bool:
     return user.is_authenticated and user.groups.filter(name=group_name).exists()
 
 
-def can_access_area(user, area: str) -> bool:
-    """area: orders|stock|returns|reports"""
-    if not user.is_authenticated:
-        return False
+def can_access_area(user, area_name):
+
+    # Super admin always allowed
+    if user.is_superuser:
+        return True
+
+    # Staff always allowed
     if user.is_staff:
         return True
-    if area == "orders":
-        return has_group(user, "Orders")
-    if area == "stock":
-        return has_group(user, "Stock")
-    if area == "returns":
-        return has_group(user, "Returns")
-    if area == "reports":
-        return has_group(user, "Reports")
-    return False
+
+    return AreaPermission.objects.filter(
+        user=user,
+        area=area_name
+    ).exists()
 
 
-def area_required(area: str, login_url: str = "/accounts/login/"):
-    """Decorator for area-level authorization."""
+def area_required(area_name, login_url: str = '/accounts/login/'):
 
-    def predicate(user):
-        return can_access_area(user, area)
 
-    return user_passes_test(predicate, login_url=login_url)
+    def decorator(view_func):
+
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+
+            if not request.user.is_authenticated:
+                return redirect('/accounts/login/')
+
+            if not can_access_area(request.user, area_name):
+                return HttpResponseForbidden(
+                    "You do not have permission to access this page."
+                )
+
+            return view_func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
 

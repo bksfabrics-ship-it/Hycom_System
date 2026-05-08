@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container-fluid mt-4">
+
+    <div class="card shadow-lg border-0 rounded-4">
+
+        <div class="card-header bg-dark text-white rounded-top-4">
+            <h4>User Management</h4>
+        </div>
+
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for profile in users %}
+                    <tr>
+                        <td>{{ profile.name }}</td>
+                        <td>{{ profile.user.username }}</td>
+                        <td>
+                            <span class="badge bg-primary">
+                                {{ profile.role }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if profile.is_approved %}
+                                <span class="badge bg-success">Approved</span>
+                            {% else %}
+                                <span class="badge bg-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not profile.is_approved %}
+                                <a class="btn btn-sm btn-success" href="{% url 'approve_user' profile.id %}">Approve</a>
+                            {% endif %}
+                            {% if profile.user.is_active %}
+                                <a class="btn btn-sm btn-danger" href="{% url 'deactivate_user' profile.id %}">Deactivate</a>
+                            {% else %}
+                                <a class="btn btn-sm btn-primary" href="#">—</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No users found.</td>
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+

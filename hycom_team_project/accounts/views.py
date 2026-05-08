@@ -9,6 +9,10 @@ from django.urls import reverse
 
 from .forms import EmployeeRegistrationForm, EmployeePasswordChangeForm
 from .models import EmployeeProfile
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.models import Group
+from django.shortcuts import get_object_or_404
+from .models import AreaPermission
 
 
 def employee_register(request):
@@ -67,3 +71,118 @@ def employee_password_change(request):
 
     return render(request, "registration/password_change.html", {"form": form})
 
+
+from utils.permissions import can_access_area
+
+
+def user_management(request):
+
+    # Permission is driven by accounts.AreaPermission(user, area='user_management')
+    # (staff can also be allowed depending on can_access_area())
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    if not can_access_area(request.user, 'user_management'):
+        messages.error(request, 'You are not allowed to access User Management.')
+        return redirect('/api/')
+
+
+    users = EmployeeProfile.objects.select_related('user').all().order_by('-created_at')
+
+    return render(request, 'accounts/user_management.html', {
+        'users': users
+    })
+
+
+
+
+
+@staff_member_required
+def approve_user(request, user_id):
+
+    profile = get_object_or_404(EmployeeProfile, id=user_id)
+
+    profile.is_approved = True
+    profile.user.is_active = True
+
+    # EmployeeProfile currently does not have a `role` field.
+    # If the user should become staff/admin, control it via Django groups or is_staff defaults.
+    # Keep approval logic simple: activate the user; optionally mark as staff if they already are.
+    # (Do not rely on non-existent profile.role)
+    if profile.user.is_staff:
+        profile.user.is_staff = True
+
+
+    profile.user.save()
+    profile.save()
+
+    messages.success(request, 'User approved successfully')
+
+    return redirect('user_management')
+
+
+@staff_member_required
+def deactivate_user(request, user_id):
+
+    profile = get_object_or_404(EmployeeProfile, id=user_id)
+
+    profile.user.is_active = False
+    profile.user.save()
+
+    messages.success(request, 'User deactivated')
+
+    return redirect('user_management')
+
+
+@staff_member_required
+def manage_permissions(request, user_id):
+
+    selected_user = get_object_or_404(User, id=user_id)
+
+    ALL_AREAS = [
+        'dashboard',
+        'orders',
+        'products',
+        'reports',
+        'user_management',
+    ]
+
+
+    if request.method == 'POST':
+
+        selected_areas = request.POST.getlist('areas')
+
+        # Delete old permissions
+        AreaPermission.objects.filter(user=selected_user).delete()
+
+        # Create new permissions
+        for area in selected_areas:
+            AreaPermission.objects.create(
+                user=selected_user,
+                area=area
+            )
+
+        messages.success(request, "Permissions updated successfully")
+
+        return redirect('user_list')
+
+    existing_permissions = AreaPermission.objects.filter(
+        user=selected_user
+    ).values_list('area', flat=True)
+
+    return render(request, 'accounts/manage_permissions.html', {
+        'selected_user': selected_user,
+        'all_areas': ALL_AREAS,
+        'existing_permissions': existing_permissions,
+    })
+    
+    
+    
+@staff_member_required
+def user_list(request):
+
+    users = User.objects.all().order_by('username')
+
+    return render(request, 'accounts/user_list.html', {
+        'users': users
+    })

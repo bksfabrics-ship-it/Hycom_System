@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class EmployeeProfile(models.Model):
@@ -22,3 +23,24 @@ class EmployeeProfile(models.Model):
     def __str__(self):
         return f"{self.user.username} ({'approved' if self.is_approved else 'pending'})"
 
+
+
+
+class AreaPermission(models.Model):
+    AREA_CHOICES = [
+        ('dashboard', 'Dashboard'),
+        ('orders', 'Orders'),
+        ('products', 'Products'),
+        ('reports', 'Reports'),
+        ('user_management', 'User Management'),
+    ]
+
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    area = models.CharField(max_length=50, choices=AREA_CHOICES)
+
+    class Meta:
+        unique_together = ('user', 'area')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.area}"

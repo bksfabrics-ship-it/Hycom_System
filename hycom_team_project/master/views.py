@@ -31,6 +31,8 @@ from django.shortcuts import render
 from datetime import datetime
 from master.models import OrderItem
 logger = logging.getLogger(__name__)
+from utils.permissions import area_required
+
 
 def run_async(func, *args):
     thread = threading.Thread(target=func, args=args, daemon=True)
@@ -71,6 +73,7 @@ def staff_or_owner_required(view_func):
 
 @staff_or_owner_required
 @login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def get_orders(request):
     if request.method == 'GET':
 
@@ -168,6 +171,7 @@ def restore_old_stock(order):
 
 
 @login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def edit_order(request, pk):
 
     order_model = Order
@@ -319,6 +323,7 @@ def get_product_by_sku(request):
 
 
 @login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def create_order_ui(request):
 
     ItemFormSet = formset_factory(OrderItemForm, extra=1)
@@ -441,23 +446,11 @@ def create_order_ui(request):
         order_form = OrderForm()
         formset = ItemFormSet()
 
-    return render(request, 'create_order.html', {
-        'order_form': order_form,
-        'formset': formset
-    })
+        return render(request, 'create_order.html', {
+            'order_form': order_form,
+            'formset': formset
+        })
 
-
-
-
-
-
-# NOTE: dashboard view below is unprotected in current file due to earlier merge issues.
-
-
-
-
-    from stock.models import Product
-    # KPIs - filtered orders
 
 
     total_products = Product.objects.count()
@@ -550,7 +543,8 @@ def create_order_ui(request):
     
 
 
-
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def order_list(request):
     search  = request.GET.get('q')
     status = request.GET.get('status')
@@ -667,7 +661,8 @@ def fill_missing(data, key, all_values):
         })
     return final
 
-
+@login_required(login_url='/accounts/login/')
+@area_required('stock', login_url='/accounts/login/')
 def dashboard(request):
     from stock.models import Product
     

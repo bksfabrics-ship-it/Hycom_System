@@ -221,53 +221,120 @@
     <!-- MENU -->
     <div class="menu">
 
-        <a href="/api/" class="menu-item active">
-            <span>📊</span> Dashboard
-        </a>
+        {% if 'dashboard' in sidebar_permissions %}
+            <a href="/api/" class="menu-item">
+                <span>📊</span> Dashboard
+            </a>
+        {% endif %}
 
-        <a href="/api/order_list/" class="menu-item">
-            <span>📦</span> Orders
-        </a>
+        {% if 'orders' in sidebar_permissions %}
+            <a href="/api/order_list/" class="menu-item">
+                <span>📦</span> Orders
+            </a>
+        {% endif %}
 
-        <a href="/stock/products/" class="menu-item">
-            <span>🧾</span> Products
-        </a>
+        {% if 'products' in sidebar_permissions %}
+            <a href="/stock/products/" class="menu-item">
+                <span>🧾</span> Products
+            </a>
+        {% endif %}
 
-        <a href="javascript:void(0);" onclick="toggleReports()" id="reportsToggle" class="menu-item">
-            <span>📊</span> Reports ▼
-        </a>
+        {% if 'reports' in sidebar_permissions %}
 
-        <div id="reportsMenu" style="display:none; padding-left:15px;">
-            <a href="/reports/order_report/">Order Report</a>
-            <a href="/reports/return_report/">Return Report</a>
-            <a href="/reports/stock_report/">Stock Report</a>
-        </div>
+            <a href="javascript:void(0);"
+            onclick="toggleReports()"
+            id="reportsToggle"
+            class="menu-item">
+
+                <span>📊</span> Reports ▼
+
+            </a>
+
+            <div id="reportsMenu"
+                style="display:none; padding-left:15px;">
+
+                <a href="/reports/order_report/">
+                    Order Report
+                </a>
+
+                <a href="/reports/return_report/">
+                    Return Report
+                </a>
+
+                <a href="/reports/stock_report/">
+                    Stock Report
+                </a>
+
+            </div>
+
+        {% endif %}
+
+        {% if 'user_management' in sidebar_permissions %}
+            <a href="/accounts/custom/users/" class="menu-item">
+                <span>👥</span> User Management
+            </a>
+        {% endif %}
 
     </div>
+
 </div>
 
 <!-- MAIN CONTENT -->
 <div class="content">
+
     {% if user.is_authenticated %}
-        <div class="mb-3">
-            Logged in as <strong>{{ user.username }}</strong>
-            <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger ms-2">Logout</a>
+
+        <div class="d-flex align-items-center justify-content-between mb-3 p-2 border rounded bg-light">
+
+            <div>
+                Logged in as 
+                <strong>{{ user.username }}</strong>
+            </div>
+
+            <form method="post" action="{% url 'logout' %}" class="m-0">
+                {% csrf_token %}
+
+                <button type="submit" class="btn btn-sm btn-danger">
+                    Logout
+                </button>
+            </form>
+
         </div>
+
     {% else %}
+
         <div class="mb-3">
-            <a href="{% url 'login' %}" class="btn btn-sm btn-outline-primary">Login</a>
+            <a href="{% url 'login' %}" class="btn btn-sm btn-outline-primary">
+                Login
+            </a>
         </div>
+
     {% endif %}
 
+
     {% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
+
+        {% for message in messages %}
+
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+
+                {{ message }}
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert">
+                </button>
+
+            </div>
+
+        {% endfor %}
+
+    {% endif %}
+
+
     {% block content %}
     {% endblock %}
+
 </div>
 
 

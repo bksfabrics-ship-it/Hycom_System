@@ -4,12 +4,15 @@ from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
+    # path('users/', views.user_management, name='user_management'),
+    path('approve-user/<int:user_id>/', views.approve_user, name='approve_user'),
+    path('deactivate-user/<int:user_id>/', views.deactivate_user, name='deactivate_user'),
+    path('users/', views.user_list, name='user_list'),
+
+    path('users/<int:user_id>/permissions/', views.manage_permissions, name='manage_permissions'),
+
     path("register/", views.employee_register, name="employee_register"),
-    path(
-        "password-change/",
-        views.employee_password_change,
-        name="employee_password_change",
-    ),
+    path("password-change/", views.employee_password_change, name="employee_password_change"),
 
 
     # Built-in Django password reset (forgot password)

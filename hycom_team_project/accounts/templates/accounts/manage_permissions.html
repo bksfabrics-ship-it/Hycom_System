@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="card shadow">
+
+        <div class="card-header bg-primary text-white">
+            <h4>
+                Manage Permissions:
+                {{ selected_user.username }}
+            </h4>
+        </div>
+
+        <div class="card-body">
+
+            <form method="post">
+
+                {% csrf_token %}
+
+                <div class="row">
+
+                    {% for area in all_areas %}
+
+                    <div class="col-md-4 mb-3">
+
+                        <div class="form-check">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="areas"
+                                value="{{ area }}"
+                                id="{{ area }}"
+
+                                {% if area in existing_permissions %}
+                                    checked
+                                {% endif %}
+                            >
+
+                            <label class="form-check-label"
+                                   for="{{ area }}">
+
+                                {{ area|title }}
+
+                            </label>
+
+                        </div>
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+                <button type="submit"
+                        class="btn btn-success">
+
+                    Save Permissions
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
