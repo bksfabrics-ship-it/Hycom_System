@@ -9,13 +9,18 @@ urlpatterns = [
     path('deactivate-user/<int:user_id>/', views.deactivate_user, name='deactivate_user'),
     path('users/', views.user_list, name='user_list'),
 
-    path('users/<int:user_id>/permissions/', views.manage_permissions, name='manage_permissions'),
+    path('manage-permissions/<int:user_id>/', views.manage_permissions, name='manage_permissions'),
 
     path("register/", views.employee_register, name="employee_register"),
     path("password-change/", views.employee_password_change, name="employee_password_change"),
 
+    # User management page (was missing and causing 404)
+    path('user-management/', views.user_management, name='user_management'),
 
+
+    
     # Built-in Django password reset (forgot password)
+
     path(
         "forgot-password/",
         include(

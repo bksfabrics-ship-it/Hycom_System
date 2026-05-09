@@ -2,6 +2,14 @@
 
 {% block content %}
 
+<style>
+
+.actions-column {
+    vertical-align: middle !important;
+}
+
+</style>
+
 <div class="container-fluid mt-4">
 
     <div class="card shadow-lg border-0 rounded-4">
@@ -27,36 +35,78 @@
                 <tbody>
 
                     {% for profile in users %}
+
                     <tr>
+
                         <td>{{ profile.name }}</td>
+
                         <td>{{ profile.user.username }}</td>
+
                         <td>
                             <span class="badge bg-primary">
                                 {{ profile.role }}
                             </span>
                         </td>
+
                         <td>
+
                             {% if profile.is_approved %}
-                                <span class="badge bg-success">Approved</span>
+
+                                <span class="badge bg-success">
+                                    Approved
+                                </span>
+
                             {% else %}
-                                <span class="badge bg-warning">Pending</span>
+
+                                <span class="badge bg-warning">
+                                    Pending
+                                </span>
+
                             {% endif %}
+
                         </td>
-                        <td>
-                            {% if not profile.is_approved %}
-                                <a class="btn btn-sm btn-success" href="{% url 'approve_user' profile.id %}">Approve</a>
-                            {% endif %}
-                            {% if profile.user.is_active %}
-                                <a class="btn btn-sm btn-danger" href="{% url 'deactivate_user' profile.id %}">Deactivate</a>
-                            {% else %}
-                                <a class="btn btn-sm btn-primary" href="#">—</a>
-                            {% endif %}
+
+                        <td class="actions-column">
+
+                            <div class="d-flex gap-2 align-items-center">
+
+                                <!-- Permissions Button -->
+                                <a href="{% url 'manage_permissions' profile.user.id %}"
+                                class="btn btn-primary btn-sm">
+                                    Permissions
+                                </a>
+
+                                <!-- Active / Inactive -->
+                                {% if profile.user.is_active %}
+
+                                    <a href="{% url 'deactivate_user' profile.user.id %}"
+                                    class="btn btn-danger btn-sm">
+                                        Deactivate
+                                    </a>
+
+                                {% else %}
+
+                                    <a href="{% url 'approve_user' profile.user.id %}"
+                                    class="btn btn-success btn-sm">
+                                        Approve
+                                    </a>
+
+                                {% endif %}
+
+                            </div>
+
                         </td>
+
                     </tr>
+
                     {% empty %}
+
                     <tr>
-                        <td colspan="5" class="text-center">No users found.</td>
+                        <td colspan="5" class="text-center">
+                            No users found.
+                        </td>
                     </tr>
+
                     {% endfor %}
 
                 </tbody>

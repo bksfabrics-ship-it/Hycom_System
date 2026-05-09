@@ -13,6 +13,13 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import Group
 from django.shortcuts import get_object_or_404
 from .models import AreaPermission
+from django.contrib.auth.decorators import user_passes_test
+
+
+def superuser_required(view_func):
+    return user_passes_test(
+        lambda u: u.is_superuser
+    )(view_func)
 
 
 def employee_register(request):
@@ -103,23 +110,22 @@ def user_management(request):
 @staff_member_required
 def approve_user(request, user_id):
 
-    profile = get_object_or_404(EmployeeProfile, id=user_id)
+    profile = get_object_or_404(
+        EmployeeProfile,
+        user__id=user_id
+    )
 
     profile.is_approved = True
+
     profile.user.is_active = True
-
-    # EmployeeProfile currently does not have a `role` field.
-    # If the user should become staff/admin, control it via Django groups or is_staff defaults.
-    # Keep approval logic simple: activate the user; optionally mark as staff if they already are.
-    # (Do not rely on non-existent profile.role)
-    if profile.user.is_staff:
-        profile.user.is_staff = True
-
-
     profile.user.save()
+
     profile.save()
 
-    messages.success(request, 'User approved successfully')
+    messages.success(
+        request,
+        'User approved successfully'
+    )
 
     return redirect('user_management')
 
@@ -127,57 +133,72 @@ def approve_user(request, user_id):
 @staff_member_required
 def deactivate_user(request, user_id):
 
-    profile = get_object_or_404(EmployeeProfile, id=user_id)
+    profile = get_object_or_404(
+        EmployeeProfile,
+        user__id=user_id
+    )
 
     profile.user.is_active = False
     profile.user.save()
 
-    messages.success(request, 'User deactivated')
+    messages.success(
+        request,
+        'User deactivated'
+    )
 
     return redirect('user_management')
 
 
-@staff_member_required
+# @superuser_required
+@login_required
 def manage_permissions(request, user_id):
 
-    selected_user = get_object_or_404(User, id=user_id)
+    user_obj = get_object_or_404(User, id=user_id)
 
     ALL_AREAS = [
-        'dashboard',
-        'orders',
-        'products',
-        'reports',
-        'user_management',
+        ('dashboard', 'Dashboard'),
+        ('orders', 'Orders'),
+        ('products', 'Products'),
+        ('reports', 'Reports'),
+        ('user_management', 'User Management'),
     ]
 
+    existing_permissions = list(
+        AreaPermission.objects.filter(
+            user=user_obj
+        ).values_list('area', flat=True)
+    )
 
     if request.method == 'POST':
 
         selected_areas = request.POST.getlist('areas')
 
-        # Delete old permissions
-        AreaPermission.objects.filter(user=selected_user).delete()
+        AreaPermission.objects.filter(
+            user=user_obj
+        ).delete()
 
-        # Create new permissions
         for area in selected_areas:
             AreaPermission.objects.create(
-                user=selected_user,
+                user=user_obj,
                 area=area
             )
 
-        messages.success(request, "Permissions updated successfully")
+        messages.success(
+            request,
+            'Permissions updated successfully.'
+        )
 
         return redirect('user_list')
 
-    existing_permissions = AreaPermission.objects.filter(
-        user=selected_user
-    ).values_list('area', flat=True)
-
-    return render(request, 'accounts/manage_permissions.html', {
-        'selected_user': selected_user,
-        'all_areas': ALL_AREAS,
-        'existing_permissions': existing_permissions,
-    })
+    return render(
+        request,
+        'accounts/manage_permissions.html',
+        {
+            'user_obj': user_obj,
+            'all_areas': ALL_AREAS,
+            'existing_permissions': existing_permissions,
+        }
+    )
     
     
     

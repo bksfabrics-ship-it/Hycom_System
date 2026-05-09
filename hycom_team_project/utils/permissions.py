@@ -14,13 +14,15 @@ def has_group(user, group_name: str) -> bool:
 
 def can_access_area(user, area):
 
-    # Admin can access everything
-    if user.is_superuser or user.is_staff:
+    # Superuser gets everything
+    if user.is_superuser:
         return True
 
+    # Not logged in
     if not user.is_authenticated:
         return False
 
+    # Check assigned permissions
     return AreaPermission.objects.filter(
         user=user,
         area=area

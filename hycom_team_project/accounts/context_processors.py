@@ -7,7 +7,7 @@ def sidebar_permissions(request):
 
     if request.user.is_authenticated:
 
-        # SUPERUSER GETS EVERYTHING
+        # Superuser gets everything
         if request.user.is_superuser:
 
             permissions = [

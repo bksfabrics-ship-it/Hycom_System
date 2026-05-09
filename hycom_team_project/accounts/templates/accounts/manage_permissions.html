@@ -15,13 +15,13 @@
 
         <div class="card-body">
 
-            <form method="post">
+            <form method="POST">
 
                 {% csrf_token %}
 
                 <div class="row">
 
-                    {% for area in all_areas %}
+                    {% for value, label in all_areas %}
 
                     <div class="col-md-4 mb-3">
 
@@ -31,19 +31,15 @@
                                 class="form-check-input"
                                 type="checkbox"
                                 name="areas"
-                                value="{{ area }}"
-                                id="{{ area }}"
-
-                                {% if area in existing_permissions %}
+                                value="{{ value }}"
+                                id="{{ value }}"
+                                {% if value in existing_permissions %}
                                     checked
                                 {% endif %}
                             >
 
-                            <label class="form-check-label"
-                                   for="{{ area }}">
-
-                                {{ area|title }}
-
+                            <label class="form-check-label" for="{{ value }}">
+                                {{ label }}
                             </label>
 
                         </div>
@@ -56,9 +52,7 @@
 
                 <button type="submit"
                         class="btn btn-success">
-
                     Save Permissions
-
                 </button>
 
             </form>
