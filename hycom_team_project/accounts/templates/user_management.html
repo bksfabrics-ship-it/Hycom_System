@@ -7,31 +7,122 @@
     <div class="card shadow-lg border-0 rounded-4">
 
         <div class="card-header bg-dark text-white rounded-top-4">
-            <h4>User Management</h4>
+            <h4 class="mb-0">User Management</h4>
         </div>
 
         <div class="card-body">
 
-            <table class="table table-hover align-middle">
+            <div class="table-responsive">
 
-                <thead class="table-dark">
-                    <tr>
-                        <th>Name</th>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
+                <table class="table table-hover align-middle">
 
-                <tbody>
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Designation</th>
+                            <th>Status</th>
+                            <th width="300">Actions</th>
+                        </tr>
+                    </thead>
 
-                    {% for profile in users %}
-                    <tr>
-                        <td>{{ profile.name }}</td>
-                        <td>{{ profile.user.username }}</td>
-                        <td>
-                            <span class="badge bg-primary">
-                                {{ profile.role }}
-                            </span>
+                    <tbody>
+
+                        {% for profile in users %}
+
+                        <tr>
+
+                            <td>
+                                {{ profile.name }}
+                            </td>
+
+                            <td>
+                                {{ profile.user.username }}
+                            </td>
+
+                            <td>
+
+                                <span class="badge bg-primary">
+
+                                    {{ profile.designation }}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                {% if profile.is_approved %}
+
+                                    <span class="badge bg-success">
+                                        Approved
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-warning text-dark">
+                                        Pending
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                {% if not profile.is_approved %}
+
+                                <a href="{% url 'approve_user' profile.user.id %}"
+                                   class="btn btn-sm btn-success">
+
+                                    Approve
+
+                                </a>
+
+                                {% endif %}
+
+                                <a href="{% url 'manage_permissions' profile.user.id %}"
+                                   class="btn btn-sm btn-primary">
+
+                                    Permissions
+
+                                </a>
+
+                                <a href="{% url 'deactivate_user' profile.user.id %}"
+                                   class="btn btn-sm btn-danger">
+
+                                    Deactivate
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+
+                            <td colspan="5" class="text-center text-muted">
+
+                                No users found
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
 {% endblock %}

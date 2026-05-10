@@ -188,7 +188,7 @@ def manage_permissions(request, user_id):
             'Permissions updated successfully.'
         )
 
-        return redirect('user_list')
+        return redirect('user_management')
 
     return render(
         request,

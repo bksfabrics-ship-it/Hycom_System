@@ -132,33 +132,53 @@
         white-space: nowrap;
         }
 
-        .table thead {
-            background-color: #f8f9fa;
-        }
-
-        .table tbody tr:hover {
-            background-color: #f1f5ff;
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
         }
 
         .table thead th {
+            background: #111827 !important;
+            color: white !important;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 14px;
+            border: none;
             position: sticky;
             top: 0;
-            background: white;
-            z-index: 2;
+            z-index: 5;
         }
+
+        .table tbody td {
+            padding: 14px;
+            vertical-align: middle;
+            border-color: #e5e7eb;
+        }
+
+        .table tbody tr:hover {
+            background: #f3f4f6;
+        }
+
+        /* STICKY FIRST COLUMN */
         .table th:first-child {
             position: sticky;
             left: 0;
+            z-index: 6;
             background: #111827 !important;
-            color: white !important;
-            z-index: 3;
         }
 
         .table td:first-child {
             position: sticky;
             left: 0;
             background: white;
-            z-index: 2;
+            z-index: 4;
+        }
+
+        /* RESPONSIVE TABLE */
+        .table-responsive {
+            border-radius: 12px;
+            overflow: auto;
         }
         .dataTables_wrapper .dataTables_filter {
             float: right;
@@ -364,39 +384,52 @@ function toggleReports() {
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    const menu = document.getElementById("reportsMenu");
-    const arrow = document.getElementById("arrow");
+    const path = window.location.pathname;
 
-    /* RESTORE REPORT MENU STATE */
-    if (menu) {
+    /* REMOVE OLD ACTIVE */
+    document.querySelectorAll('.menu-item').forEach(link => {
+        link.classList.remove('active');
+    });
 
-        let savedState = localStorage.getItem("reportsMenuOpen");
+    /* DASHBOARD */
+    if (path === '/api/' || path === '/') {
 
-        if (
-            savedState === "true" ||
-            window.location.pathname.includes("/reports/")
-        ) {
+        document.querySelector('a[href="/api/"]')?.classList.add('active');
+    }
 
-            menu.style.display = "block";
+    /* ORDERS */
+    else if (path.startsWith('/api/order')) {
 
-            if (arrow) {
-                arrow.innerHTML = "▲";
-            }
+    document.querySelector('a[href="/api/order_list/"]')
+        ?.classList.add('active');
+    }
+
+    /* PRODUCTS */
+    else if (path.includes('/stock/')) {
+
+        document.querySelector('a[href="/stock/products/"]')?.classList.add('active');
+    }
+
+    /* REPORTS */
+    else if (path.includes('/reports/')) {
+
+        document.getElementById("reportsMenu").style.display = "block";
+
+        document.getElementById("reportsToggle")?.classList.add('active');
+
+        const arrow = document.getElementById("arrow");
+
+        if (arrow) {
+            arrow.innerHTML = "▲";
         }
     }
 
-    /* ACTIVE MENU */
-    const path = window.location.pathname;
+    /* USER MANAGEMENT */
+    else if (path.includes('/user-management')) {
 
-    document.querySelectorAll('.menu-item').forEach(link => {
-
-        const href = link.getAttribute('href');
-
-        if (href && path.startsWith(href)) {
-
-            link.classList.add('active');
-        }
-    });
+    document.querySelector('a[href="/accounts/user-management/"], a[href="/accounts/custom/user-management/"]')
+        ?.classList.add('active');
+}
 
 });
 </script>
