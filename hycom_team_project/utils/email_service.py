@@ -1,6 +1,9 @@
 from django.core.mail import send_mail
+from django.conf import settings
+
 
 def send_order_email(order, is_update=False):
+
 
     status = order.status
 
@@ -71,4 +74,8 @@ Total Amount  : ₹{order.total_amount}
         "digitalmarketing@bksfabrics.in"
     ]
 
-    send_mail(subject, message.strip(), None, recipients, fail_silently=False)
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "") or getattr(settings, "EMAIL_HOST_USER", "")
+    if not from_email:
+        raise ValueError("DEFAULT_FROM_EMAIL (or EMAIL_HOST_USER) is not set; cannot send order email.")
+
+    send_mail(subject, message.strip(), from_email, recipients, fail_silently=False)
