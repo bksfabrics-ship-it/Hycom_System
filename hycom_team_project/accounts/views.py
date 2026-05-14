@@ -14,6 +14,7 @@ from django.contrib.auth.models import Group
 from django.shortcuts import get_object_or_404
 from .models import AreaPermission
 from django.contrib.auth.decorators import user_passes_test
+from django.db import transaction
 
 
 def superuser_required(view_func):
@@ -81,7 +82,7 @@ def employee_password_change(request):
 
 from utils.permissions import can_access_area
 
-
+@login_required
 def user_management(request):
 
     # Permission is driven by accounts.AreaPermission(user, area='user_management')
@@ -89,12 +90,12 @@ def user_management(request):
     if not request.user.is_authenticated:
         return redirect('login')
     
-    if not can_access_area(request.user, 'user_management'):
-        return render(request, '403.html')
+    # if not can_access_area(request.user, 'user_management'):
+    #     return render(request, '403.html')
 
     if not can_access_area(request.user, 'user_management'):
         messages.error(request, 'You are not allowed to access User Management.')
-        return redirect('/api/')
+        return redirect('api_dashboard')
 
 
     users = EmployeeProfile.objects.select_related('user').all().order_by('-created_at')
@@ -173,9 +174,10 @@ def manage_permissions(request, user_id):
 
         selected_areas = request.POST.getlist('areas')
 
-        AreaPermission.objects.filter(
-            user=user_obj
-        ).delete()
+        
+        with transaction.atomic():
+            AreaPermission.objects.filter(user=user_obj).delete()
+
 
         for area in selected_areas:
             AreaPermission.objects.create(

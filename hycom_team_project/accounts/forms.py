@@ -77,5 +77,35 @@ class EmployeeRegistrationForm(forms.ModelForm):
 
 class EmployeePasswordChangeForm(PasswordChangeForm):
     """Used after approval to allow user to set/change password."""
+
     pass
+
+
+# --- Forgot password (username -> email -> reset link) ---
+
+
+class UsernamePasswordResetForm(forms.Form):
+    username = forms.CharField(label="Username", max_length=150)
+
+    def clean_username(self):
+        return self.cleaned_data.get("username", "").strip()
+
+    def get_user(self):
+        username = self.cleaned_data.get("username")
+        if not username:
+            return None
+        # Case-insensitive username lookup
+        try:
+            return User.objects.get(username__iexact=username)
+        except User.DoesNotExist:
+            return None
+
+    # Compatibility with Django's PasswordResetView (it expects an email field).
+    # We return an empty email so reset flow relies on get_users override.
+    def get_email_field(self):
+        return "email"
+
+    def get_email(self):
+        return ""
+
 

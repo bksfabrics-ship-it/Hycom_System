@@ -2,6 +2,8 @@ from django.urls import path, include
 from django.contrib.auth import views as auth_views
 
 from . import views
+from .views_password_reset import UsernamePasswordResetView
+
 
 urlpatterns = [
     # path('users/', views.user_management, name='user_management'),
@@ -19,7 +21,7 @@ urlpatterns = [
 
 
     
-    # Built-in Django password reset (forgot password)
+    # Password reset (forgot password) - accepts username instead of email
 
     path(
         "forgot-password/",
@@ -28,34 +30,40 @@ urlpatterns = [
                 [
                     path(
                         "",
-                        auth_views.PasswordResetView.as_view(
-                            template_name="registration/password_reset_form.html",
-                            email_template_name="registration/password_reset_email.txt",
-                            subject_template_name="registration/password_reset_subject.txt",
-                            html_email_template_name="registration/password_reset_email.html",
+                        UsernamePasswordResetView.as_view(
+                            template_name="accounts/registration/password_reset_form.html",
+                            email_template_name="accounts/registration/password_reset_email.txt",
+                            subject_template_name="accounts/registration/password_reset_subject.txt",
+                            html_email_template_name="accounts/registration/password_reset_email.html",
+                            # After submitting username, redirect to our custom done page
+                            success_url="/accounts/custom/forgot-password/done/",
                         ),
                         name="password_reset",
                     ),
 
+
                     path(
                         "done/",
                         auth_views.PasswordResetDoneView.as_view(
-                            template_name="registration/password_reset_done.html"
+                            template_name="accounts/registration/password_reset_done.html"
                         ),
+
                         name="password_reset_done",
                     ),
                     path(
                         "confirm/<uidb64>/<token>/",
                         auth_views.PasswordResetConfirmView.as_view(
-                            template_name="registration/password_reset_confirm.html"
+                            template_name="accounts/registration/password_reset_confirm.html"
                         ),
+
                         name="password_reset_confirm",
                     ),
                     path(
                         "complete/",
                         auth_views.PasswordResetCompleteView.as_view(
-                            template_name="registration/password_reset_complete.html"
+                            template_name="accounts/registration/password_reset_complete.html"
                         ),
+
                         name="password_reset_complete",
                     ),
                 ],
