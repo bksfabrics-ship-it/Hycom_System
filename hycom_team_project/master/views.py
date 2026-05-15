@@ -583,6 +583,33 @@ def order_list(request):
     return render(request, 'order_list.html', {
         'orders': orders,
     })
+
+
+@area_required('orders')
+def order_invoice(request, pk):
+    order = get_object_or_404(
+        Order.objects.select_related('state').prefetch_related(
+            Prefetch('items', queryset=OrderItem.objects.select_related('product'))
+        ),
+        pk=pk
+    )
+
+    invoice_items = []
+    for index, item in enumerate(order.items.all(), start=1):
+        unit_price = item.price or item.product.selling_price or Decimal('0')
+        quantity = Decimal(item.quantity or 0)
+        invoice_items.append({
+            'sl_no': index,
+            'product': item.product,
+            'quantity': item.quantity,
+            'unit_price': unit_price,
+            'line_total': unit_price * quantity,
+        })
+
+    return render(request, 'invoice.html', {
+        'order': order,
+        'invoice_items': invoice_items,
+    })
     
     
 
@@ -753,6 +780,7 @@ def dashboard(request):
 
 def export_dashboard_excel(request):
     from stock.models import Product
+
     from django.db.models import Sum
 
     from_date = request.GET.get('from_date')

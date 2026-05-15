@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
 
 
 urlpatterns = [
@@ -30,6 +31,7 @@ urlpatterns = [
     path('accounts/custom/', include('accounts.urls')),
 
     path('api/', include('master.urls')),
+
     path('stock/', include('stock.urls')),
     path('returns/', include('returns.urls')),
     path('reports/', include('reports.urls')),
@@ -38,3 +40,7 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+elif getattr(settings, 'SERVE_STATIC', False):
+    urlpatterns += [
+        path('static/<path:path>', serve, {'document_root': settings.STATIC_ROOT}),
+    ]

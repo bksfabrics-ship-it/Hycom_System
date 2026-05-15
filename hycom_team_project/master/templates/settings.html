@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow">
+    <div class="card-header bg-primary text-white">
+      <h4>⚙️ Settings</h4>
+    </div>
+
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Order update recipients (add/remove)</label>
+            <textarea name="order_update_emails" class="form-control" rows="4" placeholder="one email per line">{{ order_update_emails }}</textarea>
+            <div class="form-text">Tip: one email per line. Only active emails will be used.</div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">Invoice recipients (add/remove)</label>
+            <textarea name="invoice_emails" class="form-control" rows="4" placeholder="one email per line">{{ invoice_emails }}</textarea>
+            <div class="form-text">Tip: one email per line.</div>
+          </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+          <button type="submit" class="btn btn-success">Save Settings</button>
+          <a href="/api/" class="btn btn-outline-secondary">Back</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

@@ -144,6 +144,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static",]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+SERVE_STATIC = os.environ.get('DJANGO_SERVE_STATIC', 'False').lower() in ('1', 'true', 'yes', 'on')
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
