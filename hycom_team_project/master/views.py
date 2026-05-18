@@ -6,7 +6,7 @@ from django.db import transaction
 import json
 
 from urllib3 import request
-from .models import Order, OrderItem
+from .models import InvoiceSetting, NotificationSetting, Order, OrderItem
 from stock.models import Product
 from django.shortcuts import render, redirect
 from django.forms import formset_factory, modelformset_factory
@@ -15,6 +15,8 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.db.models import Q, Prefetch, Sum, F, Count
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 import csv
 from django.http import HttpResponse
 from decimal import Decimal
@@ -29,7 +31,6 @@ import threading
 from openpyxl import Workbook
 from django.shortcuts import render
 from datetime import datetime
-from master.models import OrderItem
 logger = logging.getLogger(__name__)
 from utils.permissions import area_required
 from utils.permissions import can_access_area
@@ -70,6 +71,107 @@ def is_staff_user(user):
 
 def staff_or_owner_required(view_func):
     return user_passes_test(is_staff_user, login_url='/accounts/login/')(view_func)
+
+
+def parse_email_lines(value):
+    emails = []
+    invalid = []
+
+    for raw_email in (value or "").replace(",", "\n").splitlines():
+        email = raw_email.strip().lower()
+        if not email:
+            continue
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            invalid.append(email)
+            continue
+
+        if email not in emails:
+            emails.append(email)
+
+    return emails, invalid
+
+
+def sync_notification_emails(category, emails):
+    NotificationSetting.objects.filter(category=category).exclude(email__in=emails).delete()
+
+    for email in emails:
+        NotificationSetting.objects.update_or_create(
+            category=category,
+            email=email,
+            defaults={'is_active': True},
+        )
+
+
+def get_notification_emails_text(category):
+    return "\n".join(
+        NotificationSetting.objects.filter(
+            category=category,
+            is_active=True
+        ).order_by('email').values_list('email', flat=True)
+    )
+
+
+@area_required('settings')
+def app_settings(request):
+    invoice_settings = InvoiceSetting.load()
+
+    if request.method == 'POST':
+        order_update_emails, invalid_order_emails = parse_email_lines(
+            request.POST.get('order_update_emails')
+        )
+        invoice_emails, invalid_invoice_emails = parse_email_lines(
+            request.POST.get('invoice_emails')
+        )
+        invalid_emails = invalid_order_emails + invalid_invoice_emails
+
+        invoice_settings.company_name = request.POST.get('company_name', '').strip() or 'Hycom'
+        invoice_settings.company_subtitle = request.POST.get('company_subtitle', '').strip()
+        invoice_settings.company_address = request.POST.get('company_address', '').strip()
+        invoice_settings.company_phone = request.POST.get('company_phone', '').strip()
+        invoice_settings.company_email = request.POST.get('company_email', '').strip()
+        invoice_settings.company_gstin = request.POST.get('company_gstin', '').strip()
+        invoice_settings.footer_note = request.POST.get('footer_note', '').strip()
+        invoice_settings.signature_label = request.POST.get('signature_label', '').strip() or 'Authorised Signature'
+
+        try:
+            invoice_settings.full_clean()
+        except ValidationError as exc:
+            for field_errors in exc.message_dict.values():
+                for error in field_errors:
+                    messages.error(request, error)
+        else:
+            if invalid_emails:
+                messages.error(
+                    request,
+                    "Please fix invalid email address(es): " + ", ".join(invalid_emails)
+                )
+            else:
+                invoice_settings.save()
+                sync_notification_emails(
+                    NotificationSetting.CATEGORY_ORDER_UPDATE,
+                    order_update_emails
+                )
+                sync_notification_emails(
+                    NotificationSetting.CATEGORY_INVOICE,
+                    invoice_emails
+                )
+                messages.success(request, "Settings saved successfully.")
+                return redirect('/api/settings/')
+
+    context = {
+        'invoice_settings': invoice_settings,
+        'order_update_emails': get_notification_emails_text(
+            NotificationSetting.CATEGORY_ORDER_UPDATE
+        ),
+        'invoice_emails': get_notification_emails_text(
+            NotificationSetting.CATEGORY_INVOICE
+        ),
+    }
+
+    return render(request, 'settings.html', context)
 
 
 @area_required('orders')
@@ -609,6 +711,7 @@ def order_invoice(request, pk):
     return render(request, 'invoice.html', {
         'order': order,
         'invoice_items': invoice_items,
+        'invoice_settings': InvoiceSetting.load(),
     })
     
     

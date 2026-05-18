@@ -2,26 +2,70 @@
 
 {% block content %}
 <div class="container mt-4">
-  <div class="card shadow">
+  <div class="card shadow-sm">
     <div class="card-header bg-primary text-white">
-      <h4>⚙️ Settings</h4>
+      <h4 class="mb-0">Settings</h4>
     </div>
 
     <div class="card-body">
       <form method="post">
         {% csrf_token %}
 
-        <div class="row g-3">
-          <div class="col-12">
-            <label class="form-label fw-semibold">Order update recipients (add/remove)</label>
-            <textarea name="order_update_emails" class="form-control" rows="4" placeholder="one email per line">{{ order_update_emails }}</textarea>
-            <div class="form-text">Tip: one email per line. Only active emails will be used.</div>
+        <h5 class="mb-3">Invoice Company Details</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Company Name</label>
+            <input type="text" name="company_name" class="form-control" value="{{ invoice_settings.company_name }}" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Subtitle</label>
+            <input type="text" name="company_subtitle" class="form-control" value="{{ invoice_settings.company_subtitle }}">
           </div>
 
           <div class="col-12">
-            <label class="form-label fw-semibold">Invoice recipients (add/remove)</label>
+            <label class="form-label fw-semibold">Company Address</label>
+            <textarea name="company_address" class="form-control" rows="4" placeholder="Address shown on invoice">{{ invoice_settings.company_address }}</textarea>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Phone</label>
+            <input type="text" name="company_phone" class="form-control" value="{{ invoice_settings.company_phone }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Email</label>
+            <input type="email" name="company_email" class="form-control" value="{{ invoice_settings.company_email }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">GSTIN</label>
+            <input type="text" name="company_gstin" class="form-control" value="{{ invoice_settings.company_gstin }}">
+          </div>
+
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">Invoice Footer Note</label>
+            <textarea name="footer_note" class="form-control" rows="2">{{ invoice_settings.footer_note }}</textarea>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Signature Label</label>
+            <input type="text" name="signature_label" class="form-control" value="{{ invoice_settings.signature_label }}">
+          </div>
+        </div>
+
+        <h5 class="mb-3">Mail Notifications</h5>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Order notification recipients</label>
+            <textarea name="order_update_emails" class="form-control" rows="4" placeholder="one email per line">{{ order_update_emails }}</textarea>
+            <div class="form-text">Add or remove mail ids here. Use one email per line.</div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">Invoice recipients</label>
             <textarea name="invoice_emails" class="form-control" rows="4" placeholder="one email per line">{{ invoice_emails }}</textarea>
-            <div class="form-text">Tip: one email per line.</div>
+            <div class="form-text">Reserved for invoice mail flows.</div>
           </div>
         </div>
 
@@ -34,4 +78,3 @@
   </div>
 </div>
 {% endblock %}
-

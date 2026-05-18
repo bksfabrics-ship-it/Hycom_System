@@ -10,6 +10,7 @@ from .views import (
     order_invoice,
     export_orders,
     export_dashboard_excel,
+    app_settings,
 )
 from django.contrib.auth import views as auth_views
 
@@ -26,6 +27,7 @@ urlpatterns = [
     path('', dashboard),
     path('order-export/', export_orders),
     path('dashboard_export/', export_dashboard_excel),
+    path('settings/', app_settings, name='app_settings'),
     
     # # Forgot password
     # path('password-reset/',auth_views.PasswordResetView.as_view(template_name='accounts/password_reset.html'),name='password_reset'),

@@ -196,9 +196,13 @@
     <main class="page">
         <section class="invoice-header">
             <div class="company">
-                <h1>Hycom</h1>
-                <p>Management System</p>
-                <p>Invoice generated from Hycom Team Software</p>
+                <h1>{{ invoice_settings.company_name }}</h1>
+                {% if invoice_settings.company_subtitle %}
+                    <p>{{ invoice_settings.company_subtitle }}</p>
+                {% endif %}
+                {% if invoice_settings.company_gstin %}
+                    <p><strong>GSTIN:</strong> {{ invoice_settings.company_gstin }}</p>
+                {% endif %}
             </div>
             <div class="invoice-title">
                 <h2>Tax Invoice</h2>
@@ -209,6 +213,20 @@
         </section>
 
         <section class="section-grid">
+            <div class="address-box">
+                <h3>Seller</h3>
+                <p><strong>{{ invoice_settings.company_name }}</strong></p>
+                {% if invoice_settings.company_address %}
+                    <p>{{ invoice_settings.company_address|linebreaksbr }}</p>
+                {% endif %}
+                {% if invoice_settings.company_phone %}
+                    <p><strong>Phone:</strong> {{ invoice_settings.company_phone }}</p>
+                {% endif %}
+                {% if invoice_settings.company_email %}
+                    <p><strong>Email:</strong> {{ invoice_settings.company_email }}</p>
+                {% endif %}
+            </div>
+
             <div class="address-box">
                 <h3>Bill To</h3>
                 <p><strong>{{ order.customer_name }}</strong></p>
@@ -287,10 +305,12 @@
         <section class="footer">
             <div class="notes">
                 <p><strong>Remarks:</strong> {{ order.remarks|default:"-" }}</p>
-                <p>This is a system generated invoice.</p>
+                {% if invoice_settings.footer_note %}
+                    <p>{{ invoice_settings.footer_note }}</p>
+                {% endif %}
             </div>
             <div class="signature">
-                Authorised Signature
+                {{ invoice_settings.signature_label }}
             </div>
         </section>
     </main>

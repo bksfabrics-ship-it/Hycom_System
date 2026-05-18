@@ -281,6 +281,14 @@
 
         {% endif %}
 
+        {% has_permission request.user 'settings' as can_settings %}
+        {% if can_settings %}
+        <a href="/api/settings/" class="menu-item">
+            <span>*</span>
+            Settings
+        </a>
+        {% endif %}
+
         {% has_permission request.user 'user_management' as can_users %}
         {% if can_users %}
 
@@ -422,6 +430,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (arrow) {
             arrow.innerHTML = "▲";
         }
+    }
+
+    /* SETTINGS */
+    else if (path.includes('/api/settings/')) {
+
+        document.querySelector('a[href="/api/settings/"]')?.classList.add('active');
     }
 
     /* USER MANAGEMENT */

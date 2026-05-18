@@ -15,6 +15,7 @@ def sidebar_permissions(request):
                 'orders',
                 'products',
                 'reports',
+                'settings',
                 'user_management',
             ]
 

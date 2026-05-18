@@ -161,6 +161,7 @@ def manage_permissions(request, user_id):
         ('orders', 'Orders'),
         ('products', 'Products'),
         ('reports', 'Reports'),
+        ('settings', 'Settings'),
         ('user_management', 'User Management'),
     ]
 

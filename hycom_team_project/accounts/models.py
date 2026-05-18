@@ -32,6 +32,7 @@ class AreaPermission(models.Model):
         ('orders', 'Orders'),
         ('products', 'Products'),
         ('reports', 'Reports'),
+        ('settings', 'Settings'),
         ('user_management', 'User Management'),
     ]
 
