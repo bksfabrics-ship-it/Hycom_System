@@ -1,3 +1,4 @@
+{% load permission_tags %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -13,7 +14,9 @@
             width: 100%;
             padding: 8px;
             border-radius: 6px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--border, #d1d5db);
+            background: var(--input-bg, #ffffff);
+            color: var(--text, #111827);
         }
 
         /* Checkbox FIX */
@@ -37,34 +40,139 @@
         }
 
         .sidebar {
-            width: 220px;
+            width: 240px;
             height: 100vh;
             position: fixed;
-            background: #1f2937;
-            color: white;
-            padding-top: 20px;
+            background: var(--sidebar-bg);
+            color: #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 18px rgba(0,0,0,0.12);
+            overflow-y: auto;
         }
 
-        .sidebar a {
-            display: block;
-            padding: 12px 20px;
-            color: #cbd5e1;
-            text-decoration: none;
-        }
-
-        .sidebar a:hover {
-            background: #374151;
-            color: white;
-        }
-
-        .sidebar h4 {
+        /* LOGO */
+        .logo {
+            padding: 22px 20px;
             text-align: center;
-            margin-bottom: 20px;
+            border-bottom: 1px solid var(--sidebar-border);
         }
 
+        .logo h4 {
+            margin: 0;
+            font-weight: 700;
+            color: white;
+        }
+
+        .logo small {
+            color: #9ca3af;
+            font-size: 12px;
+        }
+
+        /* THEME (Light/Night) */
+        :root {
+            --bg: #f5f7fb;
+            --surface: #ffffff;
+            --surface-soft: #f9fafb;
+            --card-bg: #ffffff;
+            --text: #111827;
+            --muted-text: #6b7280;
+            --border: #d8dee8;
+            --input-bg: #ffffff;
+            --table-head: #111827;
+            --table-row-hover: #f3f6fb;
+            --shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+            --sidebar-bg: linear-gradient(180deg, #111827, #1f2937);
+            --sidebar-border: #374151;
+            --menu-hover: rgba(255, 255, 255, 0.08);
+            --accent: #2563eb;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        body.night {
+            --bg: #0f172a;
+            --surface: #111827;
+            --surface-soft: #172033;
+            --card-bg: #111827;
+            --text: #e5e7eb;
+            --muted-text: #9ca3af;
+            --border: #2b3548;
+            --input-bg: #0f172a;
+            --table-head: #020617;
+            --table-row-hover: #182235;
+            --shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
+            --sidebar-bg: linear-gradient(180deg, #0b1120, #111827);
+            --sidebar-border: #1f2937;
+            --menu-hover: rgba(96, 165, 250, 0.14);
+            --accent: #3b82f6;
+            color-scheme: dark;
+        }
+
+        .sidebar {
+            background: var(--sidebar-bg);
+        }
+
+
+        /* MENU */
+        .menu {
+            padding: 10px 0;
+        }
+
+        /* SECTION TITLE */
+        .menu-title {
+            padding: 15px 20px 8px;
+            font-size: 11px;
+            color: #9ca3af;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* MENU ITEMS */
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            margin: 4px 10px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #d1d5db;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        /* HOVER */
+        .menu-item:hover {
+            background: var(--menu-hover);
+            color: white;
+            transform: translateX(2px);
+        }
+
+        /* ACTIVE */
+        .menu-item.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
+        }
+
+        /* SUB MENU */
+        .submenu {
+            padding-left: 50px;
+            font-size: 13px;
+        }
+
+        /* CONTENT */
         .content {
-            margin-left: 220px;
+            margin-left: 240px;
             padding: 20px;
+            min-height: 100vh;
         }
         .form-check input[type="checkbox"] {
         display: inline-block !important;
@@ -78,33 +186,62 @@
         white-space: nowrap;
         }
 
-        .table thead {
-            background-color: #f8f9fa;
-        }
-
-        .table tbody tr:hover {
-            background-color: #f1f5ff;
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: var(--shadow);
         }
 
         .table thead th {
+            background: var(--table-head) !important;
+            color: white !important;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 14px;
+            border: none;
             position: sticky;
             top: 0;
-            background: white;
-            z-index: 2;
+            z-index: 5;
         }
+
+        .table tbody td {
+            padding: 14px;
+            vertical-align: middle;
+            border-color: var(--border);
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .table tbody tr:hover {
+            background: var(--table-row-hover);
+        }
+
+        .table tbody tr:hover td {
+            background: var(--table-row-hover);
+        }
+
+        /* STICKY FIRST COLUMN */
         .table th:first-child {
             position: sticky;
             left: 0;
-            background: #111827 !important;
-            color: white !important;
-            z-index: 3;
+            z-index: 6;
+            background: var(--table-head) !important;
         }
 
         .table td:first-child {
             position: sticky;
             left: 0;
-            background: white;
-            z-index: 2;
+            background: var(--surface);
+            z-index: 4;
+        }
+
+        /* RESPONSIVE TABLE */
+        .table-responsive {
+            border-radius: 12px;
+            overflow: auto;
+            box-shadow: var(--shadow);
         }
         .dataTables_wrapper .dataTables_filter {
             float: right;
@@ -123,91 +260,286 @@
 
         .dataTables_wrapper .dataTables_info {
             margin-top: 10px;
+            color: var(--muted-text);
         }
 
         .dataTables_wrapper .dataTables_paginate {
             margin-top: 10px;
         }
-        .sidebar {
-            width: 240px;
-            height: 100vh;
-            position: fixed;
-            background: #111827;
+
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_paginate {
+            color: var(--text);
+        }
+
+        .card,
+        .modal-content,
+        .dropdown-menu {
+            background: var(--card-bg);
+            color: var(--text);
+            border-color: var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .card-header,
+        .card-footer {
+            background: var(--surface-soft);
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .text-muted {
+            color: var(--muted-text) !important;
+        }
+
+        .border,
+        .border-top,
+        .border-end,
+        .border-bottom,
+        .border-start {
+            border-color: var(--border) !important;
+        }
+
+        .bg-light {
+            background: var(--surface) !important;
+            color: var(--text) !important;
+        }
+
+        .form-control,
+        .form-select,
+        .page-link,
+        .dataTables_wrapper .dataTables_filter input {
+            background-color: var(--input-bg);
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .page-link:hover,
+        .page-link:focus {
+            background-color: var(--surface-soft);
+            border-color: var(--border);
+            color: var(--accent);
+        }
+
+        .active > .page-link,
+        .page-link.active {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: #ffffff;
+        }
+
+        .form-control:focus,
+        .form-select:focus,
+        input:not([type="checkbox"]):focus,
+        select:focus,
+        textarea:focus {
+            background-color: var(--input-bg);
+            border-color: var(--accent);
+            color: var(--text);
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.14);
+            outline: none;
+        }
+
+        body.night .btn-outline-dark {
             color: #e5e7eb;
-            display: flex;
-            flex-direction: column;
+            border-color: #4b5563;
         }
 
-        /* LOGO */
-        .logo {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid #374151;
+        body.night .btn-outline-dark:hover {
+            background: #e5e7eb;
+            color: #111827;
         }
 
-        .logo h4 {
-            margin: 0;
-            font-weight: 600;
+        .user-bar {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: var(--shadow);
         }
 
-        .logo small {
-            color: #9ca3af;
-        }
-
-        /* MENU */
-        .menu {
-            padding: 10px 0;
-            flex-grow: 1;
-        }
-
-        /* SECTION TITLE */
-        .menu-title {
-            padding: 10px 20px;
-            font-size: 11px;
-            color: #9ca3af;
-            letter-spacing: 1px;
-        }
-
-        /* MENU ITEMS */
-        .menu-item {
-            display: flex;
+        .theme-toggle {
+            position: fixed;
+            top: 14px;
+            right: 112px;
+            z-index: 9999;
+            min-width: 44px;
+            height: 36px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: var(--shadow);
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 12px 20px;
-            text-decoration: none;
-            color: #cbd5e1;
-            font-size: 14px;
-            transition: all 0.2s ease;
+            justify-content: center;
+            gap: 6px;
+            font-size: 0;
+            font-weight: 600;
+            line-height: 1;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
         }
 
-        /* ICON */
-        .menu-item span {
-            font-size: 16px;
+        .theme-toggle.dragging {
+            cursor: grabbing;
+            opacity: 0.92;
         }
 
-        /* HOVER */
-        .menu-item:hover {
-            background: #1f2937;
-            color: white;
-            padding-left: 24px;
+        .theme-toggle::before {
+            content: "";
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
         }
 
-        /* ACTIVE LINK */
-        .menu-item.active {
-            background: #2563eb;
-            color: white;
-            border-left: 4px solid #60a5fa;
+        .theme-toggle::after {
+            content: "Night";
+            font-size: 13px;
         }
 
-        /* CONTENT SHIFT */
-        .content {
-            margin-left: 240px;
-            padding: 20px;
+        body.night .theme-toggle::before {
+            background: #93c5fd;
+            box-shadow: inset -4px -2px 0 #1e3a8a, 0 0 0 3px rgba(147, 197, 253, 0.14);
         }
-    </style>
+
+        body.night .theme-toggle::after {
+            content: "Day";
+        }
+</style>
 </head>
 
 <body>
+
+<!-- Theme toggle -->
+<button id="themeToggle" type="button" class="theme-toggle" aria-label="Switch to night mode">
+    🌙
+</button>
+
+<script>
+    (function () {
+        const body = document.body;
+        const key = 'hycom_theme'; // 'night' | 'light'
+        const positionKey = 'hycom_theme_toggle_position';
+        const saved = localStorage.getItem(key);
+
+        if (saved === 'night') {
+            body.classList.add('night');
+        }
+
+        const btn = document.getElementById('themeToggle');
+        if (!btn) return;
+
+        function updateIcon() {
+            btn.textContent = body.classList.contains('night') ? '☀️' : '🌙';
+        }
+
+        updateIcon = function () {
+            const isNight = body.classList.contains('night');
+            btn.textContent = isNight ? 'Day' : 'Night';
+            btn.setAttribute('aria-label', isNight ? 'Switch to day mode' : 'Switch to night mode');
+        };
+
+        updateIcon();
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function placeButton(left, top) {
+            const rect = btn.getBoundingClientRect();
+            const padding = 12;
+            const maxLeft = window.innerWidth - rect.width - padding;
+            const maxTop = window.innerHeight - rect.height - padding;
+
+            btn.style.left = `${clamp(left, padding, maxLeft)}px`;
+            btn.style.top = `${clamp(top, padding, maxTop)}px`;
+            btn.style.right = 'auto';
+        }
+
+        function savePosition() {
+            const rect = btn.getBoundingClientRect();
+            localStorage.setItem(positionKey, JSON.stringify({
+                left: Math.round(rect.left),
+                top: Math.round(rect.top)
+            }));
+        }
+
+        function restorePosition() {
+            try {
+                const savedPosition = JSON.parse(localStorage.getItem(positionKey));
+
+                if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
+                    placeButton(savedPosition.left, savedPosition.top);
+                }
+            } catch (error) {
+                localStorage.removeItem(positionKey);
+            }
+        }
+
+        restorePosition();
+        window.addEventListener('resize', savePosition);
+
+        let dragState = null;
+
+        btn.addEventListener('pointerdown', function (event) {
+            const rect = btn.getBoundingClientRect();
+
+            dragState = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                left: rect.left,
+                top: rect.top,
+                moved: false
+            };
+
+            btn.classList.add('dragging');
+            btn.setPointerCapture(event.pointerId);
+        });
+
+        btn.addEventListener('pointermove', function (event) {
+            if (!dragState || event.pointerId !== dragState.pointerId) return;
+
+            const deltaX = event.clientX - dragState.startX;
+            const deltaY = event.clientY - dragState.startY;
+
+            if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+                dragState.moved = true;
+            }
+
+            placeButton(dragState.left + deltaX, dragState.top + deltaY);
+        });
+
+        btn.addEventListener('pointerup', function (event) {
+            if (!dragState || event.pointerId !== dragState.pointerId) return;
+
+            savePosition();
+            btn.classList.remove('dragging');
+            btn.releasePointerCapture(event.pointerId);
+        });
+
+        btn.addEventListener('pointercancel', function () {
+            dragState = null;
+            btn.classList.remove('dragging');
+        });
+
+        btn.addEventListener('click', function (event) {
+            if (dragState && dragState.moved) {
+                event.preventDefault();
+                dragState = null;
+                return;
+            }
+
+            const isNight = body.classList.toggle('night');
+            localStorage.setItem(key, isNight ? 'night' : 'light');
+            updateIcon();
+            dragState = null;
+        });
+    })();
+</script>
 
 <!-- SIDEBAR -->
 <div class="sidebar">
@@ -221,70 +553,233 @@
     <!-- MENU -->
     <div class="menu">
 
-        <a href="/api/" class="menu-item active">
-            <span>📊</span> Dashboard
+        {% has_permission request.user 'dashboard' as can_dashboard %}
+        {% if can_dashboard %}
+        <a href="/api/" class="menu-item">
+            <span>📊</span>
+            Dashboard
         </a>
+        {% endif %}
 
+        {% has_permission request.user 'orders' as can_orders %}
+        {% if can_orders %}
         <a href="/api/order_list/" class="menu-item">
-            <span>📦</span> Orders
+            <span>📦</span>
+            Orders
         </a>
+        {% endif %}
 
+        {% has_permission request.user 'products' as can_products %}
+        {% if can_products %}
         <a href="/stock/products/" class="menu-item">
-            <span>🧾</span> Products
+            <span>🧾</span>
+            Products
         </a>
+        {% endif %}
 
-        <a href="javascript:void(0);" onclick="toggleReports()" id="reportsToggle">
-            📊 Reports ▼
-        </a>
+        {% has_permission request.user 'reports' as can_reports %}
+        {% if can_reports %}
 
-        <div id="reportsMenu" style="display:none; padding-left:15px;">
-            <a href="/reports/order_report/">Order Report</a>
-            <a href="/reports/return_report/">Return Report</a>
-            <a href="/reports/stock_report/">Stock Report</a>
+        <div class="menu-title">
+            REPORTS
         </div>
 
+        <a href="javascript:void(0)"
+        class="menu-item"
+        id="reportsToggle"
+        onclick="toggleReports()">
+
+            <span>📊</span>
+            Reports
+            <span style="margin-left:auto;" id="arrow">▼</span>
+        </a>
+
+        <div id="reportsMenu" style="display:none;">
+
+            <a href="/reports/order_report/"
+            class="menu-item submenu">
+                Order Report
+            </a>
+
+            <a href="/reports/return_report/"
+            class="menu-item submenu">
+                Return Report
+            </a>
+
+            <a href="/reports/stock_report/"
+            class="menu-item submenu">
+                Stock Report
+            </a>
+
+        </div>
+
+        {% endif %}
+
+        {% has_permission request.user 'settings' as can_settings %}
+        {% if can_settings %}
+        <a href="/api/settings/" class="menu-item">
+            <span>⚙️</span>
+            Settings
+        </a>
+        {% endif %}
+
+        {% has_permission request.user 'user_management' as can_users %}
+        {% if can_users %}
+
+        <div class="menu-title">
+            ADMIN
+        </div>
+
+        <a href="/accounts/custom/user-management/"
+        class="menu-item">
+            <span>👥</span>
+            User Management
+        </a>
+
+        {% endif %}
+
     </div>
+
 </div>
 
 <!-- MAIN CONTENT -->
-<div class="content">
-    {% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">
-            {{ message }}
+        <div class="content" style="background: transparent; color: inherit;">
+
+            {% if user.is_authenticated %}
+
+
+        <div class="user-bar d-flex align-items-center justify-content-between mb-3 p-2 border rounded">
+
+            <div>
+                Logged in as 
+                <strong>{{ user.username }}</strong>
+            </div>
+
+            <form method="post" action="{% url 'logout' %}" class="m-0">
+                {% csrf_token %}
+
+                <button type="submit" class="btn btn-sm btn-danger">
+                    Logout
+                </button>
+            </form>
+
         </div>
-    {% endfor %}
-{% endif %}
+
+    {% else %}
+
+        <div class="mb-3">
+            <a href="{% url 'login' %}" class="btn btn-sm btn-outline-primary">
+                Login
+            </a>
+        </div>
+
+    {% endif %}
+
+
+    {% if messages %}
+
+        {% for message in messages %}
+
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+
+                {{ message }}
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert">
+                </button>
+
+            </div>
+
+        {% endfor %}
+
+    {% endif %}
+
+
     {% block content %}
     {% endblock %}
+
 </div>
 
+
 <script>
+
 function toggleReports() {
+
     let menu = document.getElementById("reportsMenu");
     let arrow = document.getElementById("arrow");
 
     if (menu.style.display === "none") {
+
         menu.style.display = "block";
         arrow.innerHTML = "▲";
+
         localStorage.setItem("reportsMenuOpen", "true");
+
     } else {
+
         menu.style.display = "none";
         arrow.innerHTML = "▼";
+
         localStorage.setItem("reportsMenuOpen", "false");
     }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    let menu = document.getElementById("reportsMenu");
-    let arrow = document.getElementById("arrow");
 
-    let savedState = localStorage.getItem("reportsMenuOpen");
+    const path = window.location.pathname;
 
-    if (savedState === "true" || window.location.pathname.includes("/reports/")) {
-        menu.style.display = "block";
-        arrow.innerHTML = "▲";
+    /* REMOVE OLD ACTIVE */
+    document.querySelectorAll('.menu-item').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    /* DASHBOARD */
+    if (path === '/api/' || path === '/') {
+
+        document.querySelector('a[href="/api/"]')?.classList.add('active');
     }
+
+    /* ORDERS */
+    else if (path.startsWith('/api/order')) {
+
+    document.querySelector('a[href="/api/order_list/"]')
+        ?.classList.add('active');
+    }
+
+    /* PRODUCTS */
+    else if (path.includes('/stock/')) {
+
+        document.querySelector('a[href="/stock/products/"]')?.classList.add('active');
+    }
+
+    /* REPORTS */
+    else if (path.includes('/reports/')) {
+
+        document.getElementById("reportsMenu").style.display = "block";
+
+        document.getElementById("reportsToggle")?.classList.add('active');
+
+        const arrow = document.getElementById("arrow");
+
+        if (arrow) {
+            arrow.innerHTML = "▲";
+        }
+    }
+
+    /* SETTINGS */
+    else if (path.includes('/api/settings/')) {
+
+        document.querySelector('a[href="/api/settings/"]')?.classList.add('active');
+    }
+
+    /* USER MANAGEMENT */
+    else if (path.includes('/user-management')) {
+
+    document.querySelector('a[href="/accounts/user-management/"], a[href="/accounts/custom/user-management/"]')
+        ?.classList.add('active');
+}
+
 });
 </script>
 </body>

@@ -10,6 +10,50 @@ class State(models.Model):
     def __str__(self):
         return f"{self.name} ({self.code})"
 
+
+class InvoiceSetting(models.Model):
+    company_name = models.CharField(max_length=200, default="Hycom")
+    company_subtitle = models.CharField(max_length=200, blank=True, default="Management System")
+    company_address = models.TextField(blank=True, default="")
+    company_phone = models.CharField(max_length=50, blank=True, default="")
+    company_email = models.EmailField(blank=True, default="")
+    company_gstin = models.CharField(max_length=30, blank=True, default="")
+    footer_note = models.TextField(blank=True, default="This is a system generated invoice.")
+    signature_label = models.CharField(max_length=100, default="Authorised Signature")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.company_name
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class NotificationSetting(models.Model):
+    CATEGORY_ORDER_UPDATE = 'ORDER_UPDATE'
+    CATEGORY_INVOICE = 'INVOICE'
+
+    CATEGORY_CHOICES = [
+        (CATEGORY_ORDER_UPDATE, 'Order Update'),
+        (CATEGORY_INVOICE, 'Invoice'),
+    ]
+
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    email = models.EmailField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('category', 'email')
+        indexes = [
+            models.Index(fields=['category', 'is_active']),
+        ]
+
+    def __str__(self):
+        status = 'active' if self.is_active else 'inactive'
+        return f"{self.category} - {self.email} ({status})"
+
 class Order(models.Model):
 
     PORTAL_CHOICES = [

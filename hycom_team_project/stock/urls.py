@@ -1,10 +1,11 @@
 from django.urls import path
 from . import views
-from .views import product_list, edit_product, delete_product, create_product, get_product_by_sku, bulk_upload_products, download_sample_products
+from .views import product_list, export_products, edit_product, delete_product, create_product, get_product_by_sku, bulk_upload_products, download_sample_products
 
 urlpatterns = [
     path('api/get-product-by-sku/', get_product_by_sku),
     path('products/', product_list),
+    path('products/export/', export_products),
     path('product/add/', create_product),
     path('product/edit/<int:pk>/', edit_product),
     path('product/delete/<int:pk>/', delete_product),

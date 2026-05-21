@@ -1,12 +1,8 @@
-# Dashboard Excel Export Enhancement ✅
+# TODO
 
-## Steps:
-- [x] Step 1: Create TODO.md
-- [x] Step 2: Fix duplicate dashboard() function in master/views.py - merge into single function with KPIs + chart data
-- [x] Step 3: Enhance export_dashboard_excel() in master/views.py - add Summary, Style/Color/Gender/Size sheets matching dashboard charts/tables, with date filter
-- [x] Step 4: Update TODO.md - mark Step 2 & 3 complete
-- [ ] Step 5: Test export via /api/dashboard_export/ (manual: download & verify sheets)
-- [ ] Step 6: Complete task
-
-**Changes complete. Test the export button on dashboard page or /api/dashboard_export/?from_date=YYYY-MM-DD&to_date=YYYY-MM-DD**
+- [x] Identify root cause of Django mail error (`from_email` empty string).
+- [x] Update `utils/email_service.py` to pass a non-empty `from_email` (use `settings.DEFAULT_FROM_EMAIL` or `EMAIL_HOST_USER`) and add a guard.
+- [ ] Set required environment variables (`EMAIL_HOST_USER` and/or `DEFAULT_FROM_EMAIL`) in your runtime.
+- [ ] Restart Django server and re-trigger the email-sending flow.
+- [ ] If next errors appear (SMTP auth/TLS), fix SMTP configuration accordingly.
 

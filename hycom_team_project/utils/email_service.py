@@ -1,6 +1,11 @@
 from django.core.mail import send_mail
+from django.conf import settings
+from django.db import DatabaseError
+from master.models import NotificationSetting
+
 
 def send_order_email(order, is_update=False):
+
 
     status = order.status
 
@@ -65,10 +70,24 @@ Total Amount  : ₹{order.total_amount}
 
     message += "\nThis is an auto-generated email."
 
-    recipients = [
-        "ecom@hycomworkwear.in",
-        # "teamleader-ecom@bksfabrics.in",
-        "digitalmarketing@bksfabrics.in"
-    ]
+    try:
+        recipients = list(
+            NotificationSetting.objects.filter(
+                category=NotificationSetting.CATEGORY_ORDER_UPDATE,
+                is_active=True
+            ).values_list("email", flat=True)
+        )
+    except DatabaseError:
+        recipients = [
+            "ecom@hycomworkwear.in",
+            "digitalmarketing@bksfabrics.in",
+        ]
 
-    send_mail(subject, message.strip(), None, recipients, fail_silently=False)
+    if not recipients:
+        return
+
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "") or getattr(settings, "EMAIL_HOST_USER", "")
+    if not from_email:
+        raise ValueError("DEFAULT_FROM_EMAIL (or EMAIL_HOST_USER) is not set; cannot send order email.")
+
+    send_mail(subject, message.strip(), from_email, recipients, fail_silently=False)

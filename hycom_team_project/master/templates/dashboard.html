@@ -147,11 +147,11 @@
         <h5>🔥 Top Selling Products</h5>
 
         <table class="table table-bordered table-sm">
-            <thead>
+            <thead style="background-color: #000 !important; color: white;">
                 <tr>
-                    <th>Product</th>
-                    <th>SKU</th>
-                    <th>Qty</th>
+                    <th style="color: black;">Product</th>
+                    <th style="color: black;">SKU</th>
+                    <th style="color: black;">Qty</th>
                 </tr>
             </thead>
             <tbody>
@@ -159,10 +159,10 @@
                 <tr>
                     <td>{{ p.product__name }}</td>
                     <td>{{ p.product__sku }}</td>
-                    <td>{{ p.total_qty }}</td>
+                    <td><strong>{{ p.total_qty }}</strong></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="3">No data</td></tr>
+                <tr><td colspan="4">No data</td></tr>
                 {% endfor %}
             </tbody>
         </table>

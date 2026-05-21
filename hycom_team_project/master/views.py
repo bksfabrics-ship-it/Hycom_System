@@ -1,10 +1,12 @@
+import logging
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 import json
 
 from urllib3 import request
-from .models import Order, OrderItem
+from .models import InvoiceSetting, NotificationSetting, Order, OrderItem
 from stock.models import Product
 from django.shortcuts import render, redirect
 from django.forms import formset_factory, modelformset_factory
@@ -13,6 +15,8 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.db.models import Q, Prefetch, Sum, F, Count
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 import csv
 from django.http import HttpResponse
 from decimal import Decimal
@@ -27,7 +31,9 @@ import threading
 from openpyxl import Workbook
 from django.shortcuts import render
 from datetime import datetime
-from master.models import OrderItem
+logger = logging.getLogger(__name__)
+from utils.permissions import area_required
+from utils.permissions import can_access_area
 
 
 def run_async(func, *args):
@@ -56,8 +62,123 @@ def update_stock_for_order(order, reverse=False):
 
 
 
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+
+def is_staff_user(user):
+    return user.is_authenticated and user.is_staff
+
+
+def staff_or_owner_required(view_func):
+    return user_passes_test(is_staff_user, login_url='/accounts/login/')(view_func)
+
+
+def parse_email_lines(value):
+    emails = []
+    invalid = []
+
+    for raw_email in (value or "").replace(",", "\n").splitlines():
+        email = raw_email.strip().lower()
+        if not email:
+            continue
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            invalid.append(email)
+            continue
+
+        if email not in emails:
+            emails.append(email)
+
+    return emails, invalid
+
+
+def sync_notification_emails(category, emails):
+    NotificationSetting.objects.filter(category=category).exclude(email__in=emails).delete()
+
+    for email in emails:
+        NotificationSetting.objects.update_or_create(
+            category=category,
+            email=email,
+            defaults={'is_active': True},
+        )
+
+
+def get_notification_emails_text(category):
+    return "\n".join(
+        NotificationSetting.objects.filter(
+            category=category,
+            is_active=True
+        ).order_by('email').values_list('email', flat=True)
+    )
+
+
+@area_required('settings')
+def app_settings(request):
+    invoice_settings = InvoiceSetting.load()
+
+    if request.method == 'POST':
+        order_update_emails, invalid_order_emails = parse_email_lines(
+            request.POST.get('order_update_emails')
+        )
+        invoice_emails, invalid_invoice_emails = parse_email_lines(
+            request.POST.get('invoice_emails')
+        )
+        invalid_emails = invalid_order_emails + invalid_invoice_emails
+
+        invoice_settings.company_name = request.POST.get('company_name', '').strip() or 'Hycom'
+        invoice_settings.company_subtitle = request.POST.get('company_subtitle', '').strip()
+        invoice_settings.company_address = request.POST.get('company_address', '').strip()
+        invoice_settings.company_phone = request.POST.get('company_phone', '').strip()
+        invoice_settings.company_email = request.POST.get('company_email', '').strip()
+        invoice_settings.company_gstin = request.POST.get('company_gstin', '').strip()
+        invoice_settings.footer_note = request.POST.get('footer_note', '').strip()
+        invoice_settings.signature_label = request.POST.get('signature_label', '').strip() or 'Authorised Signature'
+
+        try:
+            invoice_settings.full_clean()
+        except ValidationError as exc:
+            for field_errors in exc.message_dict.values():
+                for error in field_errors:
+                    messages.error(request, error)
+        else:
+            if invalid_emails:
+                messages.error(
+                    request,
+                    "Please fix invalid email address(es): " + ", ".join(invalid_emails)
+                )
+            else:
+                invoice_settings.save()
+                sync_notification_emails(
+                    NotificationSetting.CATEGORY_ORDER_UPDATE,
+                    order_update_emails
+                )
+                sync_notification_emails(
+                    NotificationSetting.CATEGORY_INVOICE,
+                    invoice_emails
+                )
+                messages.success(request, "Settings saved successfully.")
+                return redirect('/api/settings/')
+
+    context = {
+        'invoice_settings': invoice_settings,
+        'order_update_emails': get_notification_emails_text(
+            NotificationSetting.CATEGORY_ORDER_UPDATE
+        ),
+        'invoice_emails': get_notification_emails_text(
+            NotificationSetting.CATEGORY_INVOICE
+        ),
+    }
+
+    return render(request, 'settings.html', context)
+
+
+@area_required('orders')
 def get_orders(request):
     if request.method == 'GET':
+
+
 
         orders_data = []
 
@@ -150,6 +271,7 @@ def restore_old_stock(order):
 
 
 
+@area_required('orders')
 def edit_order(request, pk):
 
     order_model = Order
@@ -240,18 +362,18 @@ def edit_order(request, pk):
                         item.price = price
                         item.save()
                     
-                    if old_status != order.status:
-                        try:
-                            transaction.on_commit(lambda: run_async(send_order_email, order, True))
-                        except Exception as e:
-                            print("Email failed:", e)
+                    # if old_status != order.status:
+                    #     try:
+                    #         transaction.on_commit(lambda: run_async(send_order_email, order, True))
+                    #     except Exception as e:
+                    #         print("Email failed:", e)
                     
-                    try:
-                        transaction.on_commit(lambda: run_async(push_order_to_sheet, order))
-                    except Exception as e:
-                        import traceback
-                        print("GOOGLE SYNC ERROR:")
-                        traceback.print_exc()
+                    # try:
+                    #     transaction.on_commit(lambda: run_async(push_order_to_sheet, order))
+                    # except Exception as e:
+                    #     import traceback
+                    #     print("GOOGLE SYNC ERROR:")
+                    #     traceback.print_exc()
                         
                     already_processed = Return.objects.filter(order=order).exists()
                     if order.status in ['Return Arrived', 'Cancelled']:
@@ -261,6 +383,8 @@ def edit_order(request, pk):
                         return redirect(f'/returns/create/?order_id={order.id}')
 
                     messages.success(request, "Order updated successfully")
+                    user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+                    logger.info(f"Order updated: {order.order_number} (status: {order.status}) by user {user}")
                     return redirect('/api/order_list/')
 
             except Exception as e:
@@ -298,6 +422,7 @@ def get_product_by_sku(request):
 
 
 
+@area_required('products')
 def create_order_ui(request):
 
     ItemFormSet = formset_factory(OrderItemForm, extra=1)
@@ -390,10 +515,10 @@ def create_order_ui(request):
                     order.save()
                     
                     
-                    # try:
-                    #     transaction.on_commit(lambda: run_async(send_order_email, order, True))
-                    # except Exception as e:
-                    #     print("Email failed:", e)
+                    try:
+                        transaction.on_commit(lambda: run_async(send_order_email, order, True))
+                    except Exception as e:
+                        print("Email failed:", e)
                     
                     try:
                         transaction.on_commit(lambda: run_async(push_order_to_sheet, order))
@@ -403,31 +528,35 @@ def create_order_ui(request):
                         traceback.print_exc()
                         
                 messages.success(request, "Order saved successfully")
+                user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+                logger.info(f"Order created: {order.order_number} by user {user}")
                 return redirect('/api/order_list/')
 
             except Exception as e:
                 messages.error(request, f"Error: {str(e)}")
 
         else:
-            messages.error(request, "Please fill all required fields correctly")
+            messages.error(request, "Please correct the errors below.")
 
             print("ORDER FORM ERRORS:", order_form.errors)
             print("FORMSET ERRORS:", formset.errors)
+
+            return render(request, 'create_order.html', {
+                'order_form': order_form,
+                'formset': formset
+            })
 
     else:
         order_form = OrderForm()
         formset = ItemFormSet()
 
-    return render(request, 'create_order.html', {
-        'order_form': order_form,
-        'formset': formset
-    })
+        return render(request, 'create_order.html', {
+            'order_form': order_form,
+            'formset': formset
+        })
 
 
 
-def dashboard(request):
-    from stock.models import Product
-    # KPIs - filtered orders
     total_products = Product.objects.count()
     from_date = request.GET.get('from_date')
     to_date = request.GET.get('to_date')
@@ -518,11 +647,14 @@ def dashboard(request):
     
 
 
-
+@area_required('products')
 def order_list(request):
     search  = request.GET.get('q')
     status = request.GET.get('status')
     portal = request.GET.get('portal')
+    
+    if not can_access_area(request.user, 'orders'):
+        return render(request, '403.html')
 
     orders = Order.objects.all().order_by('-id').prefetch_related(Prefetch('items', queryset=OrderItem.objects.select_related('product')))
     
@@ -553,6 +685,34 @@ def order_list(request):
     return render(request, 'order_list.html', {
         'orders': orders,
     })
+
+
+@area_required('orders')
+def order_invoice(request, pk):
+    order = get_object_or_404(
+        Order.objects.select_related('state').prefetch_related(
+            Prefetch('items', queryset=OrderItem.objects.select_related('product'))
+        ),
+        pk=pk
+    )
+
+    invoice_items = []
+    for index, item in enumerate(order.items.all(), start=1):
+        unit_price = item.price or item.product.selling_price or Decimal('0')
+        quantity = Decimal(item.quantity or 0)
+        invoice_items.append({
+            'sl_no': index,
+            'product': item.product,
+            'quantity': item.quantity,
+            'unit_price': unit_price,
+            'line_total': unit_price * quantity,
+        })
+
+    return render(request, 'invoice.html', {
+        'order': order,
+        'invoice_items': invoice_items,
+        'invoice_settings': InvoiceSetting.load(),
+    })
     
     
 
@@ -574,6 +734,8 @@ def delete_order(request, pk):
     order.delete()
 
     messages.success(request, "Order deleted successfully")
+    user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+    logger.info(f"Order deleted: {order.order_number} by user {user}")
     return redirect('/api/order_list/')
 
 
@@ -634,9 +796,12 @@ def fill_missing(data, key, all_values):
     return final
 
 
+@area_required('dashboard')
 def dashboard(request):
     from stock.models import Product
     
+    if not can_access_area(request.user, 'dashboard'):
+        return render(request, '403.html')
     # KPIs
     total_products = Product.objects.count()
     total_orders = Order.objects.count()
@@ -709,6 +874,7 @@ def dashboard(request):
         'gender_data': gender_data,
         'size_data': size_data,
     }
+    
 
     return render(request, 'dashboard.html', context)
 
@@ -717,6 +883,7 @@ def dashboard(request):
 
 def export_dashboard_excel(request):
     from stock.models import Product
+
     from django.db.models import Sum
 
     from_date = request.GET.get('from_date')

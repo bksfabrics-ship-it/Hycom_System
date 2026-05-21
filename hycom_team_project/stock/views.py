@@ -1,7 +1,9 @@
-from django.shortcuts import render
+import logging
 from django.db.models import Q
 from .models import Product
 # Create your views here.
+
+logger = logging.getLogger(__name__)
 from django.shortcuts import render, redirect
 from .forms import ProductForm
 from django.contrib import messages
@@ -9,6 +11,12 @@ from django.http import HttpResponse
 import csv
 
 
+from django.contrib.auth.decorators import login_required
+from utils.permissions import area_required
+from utils.permissions import can_access_area
+
+
+@area_required('products')
 def create_product(request):
 
     if request.method == 'POST':
@@ -17,6 +25,8 @@ def create_product(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Product saved successfully")
+            user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+            logger.info(f"Product created: {form.instance.sku} ({form.instance.name}) by user {user}")
             return redirect('/stock/product/add/')
 
     else:
@@ -26,8 +36,12 @@ def create_product(request):
 
 
 
+@area_required('products')
 def product_list(request):
     query = request.GET.get('q')
+    
+    if not can_access_area(request.user, 'products'):
+        return render(request, '403.html')
 
     if query:
         products = Product.objects.filter(
@@ -45,6 +59,7 @@ def product_list(request):
     
     
     
+@area_required('products')
 def edit_product(request, pk):
     product = Product.objects.get(id=pk)
 
@@ -53,6 +68,8 @@ def edit_product(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Product updated successfully")
+            user = getattr(request.user, 'username', 'Anonymous') if hasattr(request, 'user') and request.user.is_authenticated else 'Anonymous'
+            logger.info(f"Product updated: {form.instance.sku} ({form.instance.name}) by user {user}")
             return redirect('/stock/products/')
         else:
             messages.error(request, "Please fix errors")
@@ -62,6 +79,7 @@ def edit_product(request, pk):
     return render(request, 'create_product.html', {'form': form, 'product': product})
 
 
+@area_required('products')
 def delete_product(request, pk):
     product = Product.objects.get(id=pk)
     product.delete()
@@ -73,6 +91,7 @@ from django.http import JsonResponse
 from .models import Product
 
 
+@area_required('products')
 def get_product_by_sku(request):
     sku = request.GET.get('sku')
 
@@ -92,6 +111,24 @@ def get_product_by_sku(request):
     
     
     
+@area_required('products')
+def export_products(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="products.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Name', 'SKU', 'Material Code', 'Style', 'Gender', 'Color', 'Size', 'Category', 'Warehouse', 'Stock', 'Selling Price', 'Status'])
+    
+    products = Product.objects.all().values_list(
+        'name', 'sku', 'material_code', 'style', 'gender', 'color', 'size', 
+        'category', 'warehouse', 'stock', 'selling_price', 'is_active'
+    )
+    
+    writer.writerows(products)
+    
+    return response
+
+
 import pandas as pd
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -104,6 +141,7 @@ REQUIRED_COLUMNS = [
 ]
 
 
+@area_required('products')
 def bulk_upload_products(request):
 
     if request.method == 'POST' and request.FILES.get('file'):
@@ -198,7 +236,7 @@ def bulk_upload_products(request):
 
 
 
-
+@area_required('products')
 def download_sample_products(request):
 
     response = HttpResponse(content_type='text/csv')

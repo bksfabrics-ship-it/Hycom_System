@@ -13,21 +13,27 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 from django.contrib.messages import constants as messages
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+    
+# Load environment variables from .env file
+load_dotenv()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-st&h0!!!d#2a&)6&6k8@he@6@!ql(4tvh*4e%jpm+-r%fc!p1*'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-insecure-key-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = ['*']
+allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()] or ['localhost','127.0.0.1', '192.168.123.59']
+
 
 
 # Application definition
@@ -42,7 +48,8 @@ INSTALLED_APPS = [
     'master.apps.MasterConfig', 
     'stock',
     'returns',
-    'reports'
+    'reports',
+    'accounts'
 ]
 
 MIDDLEWARE = [
@@ -54,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.error_middleware.GlobalExceptionMiddleware',
+    'utils.activity_middleware.ActivityMiddleware',
 ]
 
 ROOT_URLCONF = 'hycom_team_project.urls'
@@ -68,6 +76,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'accounts.context_processors.sidebar_permissions',
             ],
         },
     },
@@ -88,13 +97,14 @@ WSGI_APPLICATION = 'hycom_team_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hycom',  # your MySQL database name
-        'USER': 'root',
-        'PASSWORD': 'admin',  # your MySQL password
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.environ.get('DB_NAME', 'hycom'),
+        'USER': os.environ.get('DB_USER', 'root'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'admin'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
     }
 }
+
 
 
 # Password validation
@@ -131,16 +141,21 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / "static",]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+SERVE_STATIC = os.environ.get('DJANGO_SERVE_STATIC', 'False').lower() in ('1', 'true', 'yes', 'on')
+
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('1','true','yes','on')
 
-EMAIL_HOST_USER = 'bksfabrics@gmail.com'
-EMAIL_HOST_PASSWORD = 'qxaj hvpl mirf grrg'   # NOT your Gmail password
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+
 
 LOGGING = {
     'version': 1,
@@ -152,17 +167,37 @@ LOGGING = {
             'class': 'logging.FileHandler',
             'filename': 'error.log',
         },
+        'activity_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'activity.log',
+        },
     },
 
     'loggers': {
         'django': {
-            'handlers': ['file'],
-            'level': 'ERROR',
+            'handlers': ['file', 'activity_file'],
+            'level': 'INFO',
             'propagate': True,
         },
         '': {  # root logger
-            'handlers': ['file'],
-            'level': 'ERROR',
+            'handlers': ['file', 'activity_file'],
+            'level': 'INFO',
         },
     },
 }
+
+# Auth redirects
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/api/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Accounts app templates (keeps default auth pages working)
+LOGIN_REDIRECT_URL = '/api/'
+
+# Password management routes are custom in accounts app.
+
+
+

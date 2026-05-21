@@ -228,7 +228,7 @@ document.addEventListener("DOMContentLoaded", function () {
     new Chart(document.getElementById('productChart'), {
         type: 'doughnut',
         data: {
-            labels: productData.map(i => i.product__name),
+            labels: productData.map(i => i.order__portal),
             datasets: [{
                 label: 'Qty',
                 data: productData.map(i => i.total_qty)
