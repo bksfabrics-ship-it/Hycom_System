@@ -85,6 +85,7 @@ from utils.permissions import can_access_area
 @login_required
 def user_management(request):
 
+
     # Permission is driven by accounts.AreaPermission(user, area='user_management')
     # (staff can also be allowed depending on can_access_area())
     if not request.user.is_authenticated:

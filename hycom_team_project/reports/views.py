@@ -47,6 +47,69 @@ def return_report(request):
     return render(request, 'return_report.html', {'data': data})
 
 
+@area_required('reports')
+def export_return_report(request):
+    qs = ReturnItem.objects.select_related('return_obj', 'product')
+
+
+    # (Optional) filters via query params
+    # - from_date/to_date apply to item_arrived_date
+    # - search matches order number / sku / product name
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    search = request.GET.get('search')
+
+    if start_date:
+        qs = qs.filter(item_arrived_date__gte=start_date)
+    if end_date:
+        qs = qs.filter(item_arrived_date__lte=end_date)
+    if search:
+        qs = qs.filter(
+            Q(return_obj__order__order_number__icontains=search) |
+            Q(product__sku__icontains=search) |
+            Q(product__name__icontains=search)
+        )
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="return_report.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Order No', 'Type',
+        'SKU', 'Product',
+        'Qty', 'Condition',
+        'Customer Message', 'QC Checked By', 'QC Remarks',
+        'Arrived Date'
+    ])
+
+    for row in qs.values(
+        'return_obj__order__order_number',
+        'return_obj__type',
+        'product__sku',
+        'product__name',
+        'quantity',
+        'condition',
+        'customer_message',
+        'qc_checked_by',
+        'qc_message',
+        'item_arrived_date'
+    ):
+        writer.writerow([
+            row['return_obj__order__order_number'],
+            row['return_obj__type'],
+            row['product__sku'],
+            row['product__name'],
+            row['quantity'],
+            row['condition'],
+            row['customer_message'],
+            row['qc_checked_by'],
+            row['qc_message'],
+            row['item_arrived_date']
+        ])
+
+    return response
+
+
 
 
 
@@ -113,7 +176,7 @@ def order_report(request):
         .annotate(count=Count('id'))
 
     # 🏆 TOP PRODUCTS
-    top_products = qs.values('product__name') \
+    top_products = qs.values('order__portal') \
         .annotate(total_qty=Sum('quantity')) \
         .order_by('-total_qty')[:5]
         
@@ -129,6 +192,45 @@ def order_report(request):
     'product_data': json.dumps(list(top_colors), cls=DjangoJSONEncoder)
 })
 
+
+
+
+@area_required('reports')
+def export_stock_report(request):
+    products = Product.objects.annotate(
+        ordered_qty=Sum('orderitem__quantity'),
+        returned_qty=Sum('returnitem__quantity')
+    )
+
+    # (Optional) filters via query params
+    sku = request.GET.get('sku')
+    name = request.GET.get('name')
+    warehouse = request.GET.get('warehouse')
+
+    if sku:
+        products = products.filter(sku__icontains=sku)
+    if name:
+        products = products.filter(name__icontains=name)
+    if warehouse:
+        products = products.filter(warehouse__icontains=warehouse)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="stock_report.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'SKU', 'Product', 'Warehouse', 'Available Stock'
+    ])
+
+    for p in products:
+        writer.writerow([
+            p.sku,
+            p.name,
+            p.warehouse,
+            p.stock,
+        ])
+
+    return response
 
 
 

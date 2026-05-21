@@ -14,7 +14,9 @@
             width: 100%;
             padding: 8px;
             border-radius: 6px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--border, #d1d5db);
+            background: var(--input-bg, #ffffff);
+            color: var(--text, #111827);
         }
 
         /* Checkbox FIX */
@@ -41,11 +43,11 @@
             width: 240px;
             height: 100vh;
             position: fixed;
-            background: linear-gradient(180deg, #111827, #1f2937);
+            background: var(--sidebar-bg);
             color: #e5e7eb;
             display: flex;
             flex-direction: column;
-            box-shadow: 4px 0 10px rgba(0,0,0,0.08);
+            box-shadow: 4px 0 18px rgba(0,0,0,0.12);
             overflow-y: auto;
         }
 
@@ -53,7 +55,7 @@
         .logo {
             padding: 22px 20px;
             text-align: center;
-            border-bottom: 1px solid #374151;
+            border-bottom: 1px solid var(--sidebar-border);
         }
 
         .logo h4 {
@@ -66,6 +68,56 @@
             color: #9ca3af;
             font-size: 12px;
         }
+
+        /* THEME (Light/Night) */
+        :root {
+            --bg: #f5f7fb;
+            --surface: #ffffff;
+            --surface-soft: #f9fafb;
+            --card-bg: #ffffff;
+            --text: #111827;
+            --muted-text: #6b7280;
+            --border: #d8dee8;
+            --input-bg: #ffffff;
+            --table-head: #111827;
+            --table-row-hover: #f3f6fb;
+            --shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+            --sidebar-bg: linear-gradient(180deg, #111827, #1f2937);
+            --sidebar-border: #374151;
+            --menu-hover: rgba(255, 255, 255, 0.08);
+            --accent: #2563eb;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        body.night {
+            --bg: #0f172a;
+            --surface: #111827;
+            --surface-soft: #172033;
+            --card-bg: #111827;
+            --text: #e5e7eb;
+            --muted-text: #9ca3af;
+            --border: #2b3548;
+            --input-bg: #0f172a;
+            --table-head: #020617;
+            --table-row-hover: #182235;
+            --shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
+            --sidebar-bg: linear-gradient(180deg, #0b1120, #111827);
+            --sidebar-border: #1f2937;
+            --menu-hover: rgba(96, 165, 250, 0.14);
+            --accent: #3b82f6;
+            color-scheme: dark;
+        }
+
+        .sidebar {
+            background: var(--sidebar-bg);
+        }
+
 
         /* MENU */
         .menu {
@@ -98,15 +150,16 @@
 
         /* HOVER */
         .menu-item:hover {
-            background: #374151;
+            background: var(--menu-hover);
             color: white;
             transform: translateX(2px);
         }
 
         /* ACTIVE */
         .menu-item.active {
-            background: #2563eb;
+            background: var(--accent);
             color: white;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
         }
 
         /* SUB MENU */
@@ -119,6 +172,7 @@
         .content {
             margin-left: 240px;
             padding: 20px;
+            min-height: 100vh;
         }
         .form-check input[type="checkbox"] {
         display: inline-block !important;
@@ -135,11 +189,13 @@
         .table {
             border-radius: 12px;
             overflow: hidden;
-            background: white;
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: var(--shadow);
         }
 
         .table thead th {
-            background: #111827 !important;
+            background: var(--table-head) !important;
             color: white !important;
             font-size: 14px;
             font-weight: 600;
@@ -153,11 +209,17 @@
         .table tbody td {
             padding: 14px;
             vertical-align: middle;
-            border-color: #e5e7eb;
+            border-color: var(--border);
+            background: var(--surface);
+            color: var(--text);
         }
 
         .table tbody tr:hover {
-            background: #f3f4f6;
+            background: var(--table-row-hover);
+        }
+
+        .table tbody tr:hover td {
+            background: var(--table-row-hover);
         }
 
         /* STICKY FIRST COLUMN */
@@ -165,13 +227,13 @@
             position: sticky;
             left: 0;
             z-index: 6;
-            background: #111827 !important;
+            background: var(--table-head) !important;
         }
 
         .table td:first-child {
             position: sticky;
             left: 0;
-            background: white;
+            background: var(--surface);
             z-index: 4;
         }
 
@@ -179,6 +241,7 @@
         .table-responsive {
             border-radius: 12px;
             overflow: auto;
+            box-shadow: var(--shadow);
         }
         .dataTables_wrapper .dataTables_filter {
             float: right;
@@ -197,15 +260,286 @@
 
         .dataTables_wrapper .dataTables_info {
             margin-top: 10px;
+            color: var(--muted-text);
         }
 
         .dataTables_wrapper .dataTables_paginate {
             margin-top: 10px;
         }
-    </style>
+
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_paginate {
+            color: var(--text);
+        }
+
+        .card,
+        .modal-content,
+        .dropdown-menu {
+            background: var(--card-bg);
+            color: var(--text);
+            border-color: var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .card-header,
+        .card-footer {
+            background: var(--surface-soft);
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .text-muted {
+            color: var(--muted-text) !important;
+        }
+
+        .border,
+        .border-top,
+        .border-end,
+        .border-bottom,
+        .border-start {
+            border-color: var(--border) !important;
+        }
+
+        .bg-light {
+            background: var(--surface) !important;
+            color: var(--text) !important;
+        }
+
+        .form-control,
+        .form-select,
+        .page-link,
+        .dataTables_wrapper .dataTables_filter input {
+            background-color: var(--input-bg);
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .page-link:hover,
+        .page-link:focus {
+            background-color: var(--surface-soft);
+            border-color: var(--border);
+            color: var(--accent);
+        }
+
+        .active > .page-link,
+        .page-link.active {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: #ffffff;
+        }
+
+        .form-control:focus,
+        .form-select:focus,
+        input:not([type="checkbox"]):focus,
+        select:focus,
+        textarea:focus {
+            background-color: var(--input-bg);
+            border-color: var(--accent);
+            color: var(--text);
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.14);
+            outline: none;
+        }
+
+        body.night .btn-outline-dark {
+            color: #e5e7eb;
+            border-color: #4b5563;
+        }
+
+        body.night .btn-outline-dark:hover {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .user-bar {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: var(--shadow);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 14px;
+            right: 112px;
+            z-index: 9999;
+            min-width: 44px;
+            height: 36px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: var(--shadow);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 0;
+            font-weight: 600;
+            line-height: 1;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .theme-toggle.dragging {
+            cursor: grabbing;
+            opacity: 0.92;
+        }
+
+        .theme-toggle::before {
+            content: "";
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
+        }
+
+        .theme-toggle::after {
+            content: "Night";
+            font-size: 13px;
+        }
+
+        body.night .theme-toggle::before {
+            background: #93c5fd;
+            box-shadow: inset -4px -2px 0 #1e3a8a, 0 0 0 3px rgba(147, 197, 253, 0.14);
+        }
+
+        body.night .theme-toggle::after {
+            content: "Day";
+        }
+</style>
 </head>
 
 <body>
+
+<!-- Theme toggle -->
+<button id="themeToggle" type="button" class="theme-toggle" aria-label="Switch to night mode">
+    🌙
+</button>
+
+<script>
+    (function () {
+        const body = document.body;
+        const key = 'hycom_theme'; // 'night' | 'light'
+        const positionKey = 'hycom_theme_toggle_position';
+        const saved = localStorage.getItem(key);
+
+        if (saved === 'night') {
+            body.classList.add('night');
+        }
+
+        const btn = document.getElementById('themeToggle');
+        if (!btn) return;
+
+        function updateIcon() {
+            btn.textContent = body.classList.contains('night') ? '☀️' : '🌙';
+        }
+
+        updateIcon = function () {
+            const isNight = body.classList.contains('night');
+            btn.textContent = isNight ? 'Day' : 'Night';
+            btn.setAttribute('aria-label', isNight ? 'Switch to day mode' : 'Switch to night mode');
+        };
+
+        updateIcon();
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function placeButton(left, top) {
+            const rect = btn.getBoundingClientRect();
+            const padding = 12;
+            const maxLeft = window.innerWidth - rect.width - padding;
+            const maxTop = window.innerHeight - rect.height - padding;
+
+            btn.style.left = `${clamp(left, padding, maxLeft)}px`;
+            btn.style.top = `${clamp(top, padding, maxTop)}px`;
+            btn.style.right = 'auto';
+        }
+
+        function savePosition() {
+            const rect = btn.getBoundingClientRect();
+            localStorage.setItem(positionKey, JSON.stringify({
+                left: Math.round(rect.left),
+                top: Math.round(rect.top)
+            }));
+        }
+
+        function restorePosition() {
+            try {
+                const savedPosition = JSON.parse(localStorage.getItem(positionKey));
+
+                if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
+                    placeButton(savedPosition.left, savedPosition.top);
+                }
+            } catch (error) {
+                localStorage.removeItem(positionKey);
+            }
+        }
+
+        restorePosition();
+        window.addEventListener('resize', savePosition);
+
+        let dragState = null;
+
+        btn.addEventListener('pointerdown', function (event) {
+            const rect = btn.getBoundingClientRect();
+
+            dragState = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                left: rect.left,
+                top: rect.top,
+                moved: false
+            };
+
+            btn.classList.add('dragging');
+            btn.setPointerCapture(event.pointerId);
+        });
+
+        btn.addEventListener('pointermove', function (event) {
+            if (!dragState || event.pointerId !== dragState.pointerId) return;
+
+            const deltaX = event.clientX - dragState.startX;
+            const deltaY = event.clientY - dragState.startY;
+
+            if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+                dragState.moved = true;
+            }
+
+            placeButton(dragState.left + deltaX, dragState.top + deltaY);
+        });
+
+        btn.addEventListener('pointerup', function (event) {
+            if (!dragState || event.pointerId !== dragState.pointerId) return;
+
+            savePosition();
+            btn.classList.remove('dragging');
+            btn.releasePointerCapture(event.pointerId);
+        });
+
+        btn.addEventListener('pointercancel', function () {
+            dragState = null;
+            btn.classList.remove('dragging');
+        });
+
+        btn.addEventListener('click', function (event) {
+            if (dragState && dragState.moved) {
+                event.preventDefault();
+                dragState = null;
+                return;
+            }
+
+            const isNight = body.classList.toggle('night');
+            localStorage.setItem(key, isNight ? 'night' : 'light');
+            updateIcon();
+            dragState = null;
+        });
+    })();
+</script>
 
 <!-- SIDEBAR -->
 <div class="sidebar">
@@ -284,7 +618,7 @@
         {% has_permission request.user 'settings' as can_settings %}
         {% if can_settings %}
         <a href="/api/settings/" class="menu-item">
-            <span>*</span>
+            <span>⚙️</span>
             Settings
         </a>
         {% endif %}
@@ -309,11 +643,12 @@
 </div>
 
 <!-- MAIN CONTENT -->
-<div class="content">
+        <div class="content" style="background: transparent; color: inherit;">
 
-    {% if user.is_authenticated %}
+            {% if user.is_authenticated %}
 
-        <div class="d-flex align-items-center justify-content-between mb-3 p-2 border rounded bg-light">
+
+        <div class="user-bar d-flex align-items-center justify-content-between mb-3 p-2 border rounded">
 
             <div>
                 Logged in as 
