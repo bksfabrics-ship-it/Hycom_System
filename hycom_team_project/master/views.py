@@ -362,18 +362,18 @@ def edit_order(request, pk):
                         item.price = price
                         item.save()
                     
-                    # if old_status != order.status:
-                    #     try:
-                    #         transaction.on_commit(lambda: run_async(send_order_email, order, True))
-                    #     except Exception as e:
-                    #         print("Email failed:", e)
+                    if old_status != order.status:
+                        try:
+                            transaction.on_commit(lambda: run_async(send_order_email, order, True))
+                        except Exception as e:
+                            print("Email failed:", e)
                     
-                    # try:
-                    #     transaction.on_commit(lambda: run_async(push_order_to_sheet, order))
-                    # except Exception as e:
-                    #     import traceback
-                    #     print("GOOGLE SYNC ERROR:")
-                    #     traceback.print_exc()
+                    try:
+                        transaction.on_commit(lambda: run_async(push_order_to_sheet, order))
+                    except Exception as e:
+                        import traceback
+                        print("GOOGLE SYNC ERROR:")
+                        traceback.print_exc()
                         
                     already_processed = Return.objects.filter(order=order).exists()
                     if order.status in ['Return Arrived', 'Cancelled']:
