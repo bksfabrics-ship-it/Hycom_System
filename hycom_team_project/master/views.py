@@ -31,6 +31,7 @@ import threading
 from openpyxl import Workbook
 from django.shortcuts import render
 from datetime import datetime
+from django.utils import timezone
 logger = logging.getLogger(__name__)
 from utils.permissions import area_required
 from utils.permissions import can_access_area
@@ -133,8 +134,19 @@ def app_settings(request):
         invoice_settings.company_phone = request.POST.get('company_phone', '').strip()
         invoice_settings.company_email = request.POST.get('company_email', '').strip()
         invoice_settings.company_gstin = request.POST.get('company_gstin', '').strip()
+        invoice_settings.company_pan = request.POST.get('company_pan', '').strip()
+        invoice_settings.company_cin = request.POST.get('company_cin', '').strip()
+        invoice_settings.company_msme = request.POST.get('company_msme', '').strip()
         invoice_settings.footer_note = request.POST.get('footer_note', '').strip()
         invoice_settings.signature_label = request.POST.get('signature_label', '').strip() or 'Authorised Signature'
+        invoice_settings.dc_doc_prefix = request.POST.get('dc_doc_prefix', '').strip() or 'DC'
+        invoice_settings.dc_delivery_prefix = request.POST.get('dc_delivery_prefix', '').strip() or 'DN'
+        invoice_settings.dc_default_hsn = request.POST.get('dc_default_hsn', '').strip()
+        invoice_settings.dc_terms = request.POST.get('dc_terms', '').strip()
+        invoice_settings.dc_transport_mode = request.POST.get('dc_transport_mode', '').strip()
+        invoice_settings.dc_vehicle_no = request.POST.get('dc_vehicle_no', '').strip()
+        invoice_settings.dc_insurance_note = request.POST.get('dc_insurance_note', '').strip()
+        invoice_settings.dc_footer_note = request.POST.get('dc_footer_note', '').strip()
 
         try:
             invoice_settings.full_clean()
@@ -712,6 +724,43 @@ def order_invoice(request, pk):
         'order': order,
         'invoice_items': invoice_items,
         'invoice_settings': InvoiceSetting.load(),
+    })
+
+
+@area_required('orders')
+def order_delivery_challan(request, pk):
+    order = get_object_or_404(
+        Order.objects.select_related('state').prefetch_related(
+            Prefetch('items', queryset=OrderItem.objects.select_related('product'))
+        ),
+        pk=pk
+    )
+
+    if not order.dc_date:
+        order.dc_date = timezone.localdate()
+        order.save(update_fields=['dc_date'])
+
+    dc_items = []
+    for index, item in enumerate(order.items.all(), start=1):
+        dc_items.append({
+            'sl_no': index,
+            'product': item.product,
+            'quantity': item.quantity,
+            'qty_kgs': item.quantity,
+            'uom': 'SET',
+            'batch': item.product.material_code or item.product.sku,
+        })
+
+    settings = InvoiceSetting.load()
+    doc_prefix = settings.dc_doc_prefix or 'DC'
+    delivery_prefix = settings.dc_delivery_prefix or 'DN'
+
+    return render(request, 'delivery_challan.html', {
+        'order': order,
+        'dc_items': dc_items,
+        'dc_settings': settings,
+        'dc_doc_no': f"{doc_prefix}{order.id:06d}",
+        'dc_delivery_no': f"{delivery_prefix}{order.id:06d}",
     })
     
     

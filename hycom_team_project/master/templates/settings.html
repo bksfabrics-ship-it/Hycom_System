@@ -43,6 +43,21 @@
             <input type="text" name="company_gstin" class="form-control" value="{{ invoice_settings.company_gstin }}">
           </div>
 
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">PAN</label>
+            <input type="text" name="company_pan" class="form-control" value="{{ invoice_settings.company_pan }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">CIN</label>
+            <input type="text" name="company_cin" class="form-control" value="{{ invoice_settings.company_cin }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">MSME</label>
+            <input type="text" name="company_msme" class="form-control" value="{{ invoice_settings.company_msme }}">
+          </div>
+
           <div class="col-md-8">
             <label class="form-label fw-semibold">Invoice Footer Note</label>
             <textarea name="footer_note" class="form-control" rows="2">{{ invoice_settings.footer_note }}</textarea>
@@ -51,6 +66,49 @@
           <div class="col-md-4">
             <label class="form-label fw-semibold">Signature Label</label>
             <input type="text" name="signature_label" class="form-control" value="{{ invoice_settings.signature_label }}">
+          </div>
+        </div>
+
+        <h5 class="mb-3">Delivery Challan Settings</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">DC Doc Prefix</label>
+            <input type="text" name="dc_doc_prefix" class="form-control" value="{{ invoice_settings.dc_doc_prefix }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Delivery No Prefix</label>
+            <input type="text" name="dc_delivery_prefix" class="form-control" value="{{ invoice_settings.dc_delivery_prefix }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Default HSN</label>
+            <input type="text" name="dc_default_hsn" class="form-control" value="{{ invoice_settings.dc_default_hsn }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Terms of Delivery</label>
+            <input type="text" name="dc_terms" class="form-control" value="{{ invoice_settings.dc_terms }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Mode of Transport</label>
+            <input type="text" name="dc_transport_mode" class="form-control" value="{{ invoice_settings.dc_transport_mode }}">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Vehicle No</label>
+            <input type="text" name="dc_vehicle_no" class="form-control" value="{{ invoice_settings.dc_vehicle_no }}">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">Insurance Note</label>
+            <textarea name="dc_insurance_note" class="form-control" rows="2">{{ invoice_settings.dc_insurance_note }}</textarea>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">DC Footer Note</label>
+            <textarea name="dc_footer_note" class="form-control" rows="3">{{ invoice_settings.dc_footer_note }}</textarea>
           </div>
         </div>
 

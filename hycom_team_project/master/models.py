@@ -18,8 +18,19 @@ class InvoiceSetting(models.Model):
     company_phone = models.CharField(max_length=50, blank=True, default="")
     company_email = models.EmailField(blank=True, default="")
     company_gstin = models.CharField(max_length=30, blank=True, default="")
+    company_pan = models.CharField(max_length=30, blank=True, default="")
+    company_cin = models.CharField(max_length=50, blank=True, default="")
+    company_msme = models.CharField(max_length=50, blank=True, default="")
     footer_note = models.TextField(blank=True, default="This is a system generated invoice.")
     signature_label = models.CharField(max_length=100, default="Authorised Signature")
+    dc_doc_prefix = models.CharField(max_length=30, blank=True, default="DC")
+    dc_delivery_prefix = models.CharField(max_length=30, blank=True, default="DN")
+    dc_default_hsn = models.CharField(max_length=20, blank=True, default="")
+    dc_terms = models.CharField(max_length=100, blank=True, default="Ex Works")
+    dc_transport_mode = models.CharField(max_length=100, blank=True, default="")
+    dc_vehicle_no = models.CharField(max_length=100, blank=True, default="")
+    dc_insurance_note = models.TextField(blank=True, default="Materials are covered under the Marine Cargo Annual Turnover Policy.")
+    dc_footer_note = models.TextField(blank=True, default="1) Please verify quantity and condition of goods upon receipt.\n2) Shortage, damage, or quality issues must be reported within 24 hours of receipt of goods.")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -87,6 +98,7 @@ class Order(models.Model):
     invoice_number = models.CharField(max_length=100)
     invoice_date = models.DateField()
     ship_date = models.DateField(null=True, blank=True)
+    dc_date = models.DateField(null=True, blank=True)
 
     # Fulfilment
     fulfilment = models.CharField(max_length=20, choices=FULFILMENT_CHOICES)

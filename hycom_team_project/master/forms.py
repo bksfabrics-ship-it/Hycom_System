@@ -10,7 +10,7 @@ class OrderForm(forms.ModelForm):
         model = Order
 
         # ✅ ONLY include user-input fields
-        exclude = ['amount', 'gst', 'cgst', 'sgst', 'igst', 'total_amount']
+        exclude = ['amount', 'gst', 'cgst', 'sgst', 'igst', 'total_amount', 'dc_date']
 
         widgets = {
             'portal': forms.Select(attrs={'class': 'form-control', 'required': True}),

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Delivery Challan {{ dc_doc_no }}</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            color: #111111;
+            background: #eef2f7;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .toolbar {
+            width: 210mm;
+            margin: 18px auto 0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn {
+            border: 1px solid #111827;
+            border-radius: 6px;
+            padding: 8px 14px;
+            background: #111827;
+            color: #ffffff;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 24px auto;
+            padding: 18mm 14mm;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+        }
+
+        .outer {
+            border: 1px solid #111111;
+            min-height: 250mm;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top {
+            display: grid;
+            grid-template-columns: 68% 32%;
+            border-bottom: 1px solid #111111;
+        }
+
+        .company {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 12px;
+            padding: 12px 14px;
+            min-height: 90px;
+        }
+
+        .logo-box {
+            border: 1px solid #111111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+
+        .company h1 {
+            margin: 0 0 3px;
+            font-size: 15px;
+            letter-spacing: 0;
+        }
+
+        .company p,
+        .registration p,
+        .address p,
+        .meta p,
+        .notes p {
+            margin: 2px 0;
+        }
+
+        .registration {
+            border-left: 1px solid #111111;
+            padding: 12px 14px;
+        }
+
+        .registration h2 {
+            margin: 0 0 8px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .title {
+            text-align: center;
+            border-bottom: 1px solid #111111;
+            padding: 8px 14px;
+        }
+
+        .title h2 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: 0;
+        }
+
+        .title p {
+            margin: 4px 0 0;
+            font-size: 11px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 34% 34% 32%;
+            border-bottom: 1px solid #111111;
+            min-height: 115px;
+        }
+
+        .address,
+        .meta {
+            padding: 10px 12px;
+            border-right: 1px solid #111111;
+        }
+
+        .meta {
+            border-right: 0;
+        }
+
+        .label {
+            font-weight: 700;
+        }
+
+        .address h3 {
+            margin: 0 0 8px;
+            font-size: 12px;
+        }
+
+        .meta-row {
+            display: grid;
+            grid-template-columns: 48% 4% 48%;
+            gap: 0;
+            margin-bottom: 7px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #111111;
+            padding: 7px 6px;
+            vertical-align: top;
+        }
+
+        th {
+            text-align: center;
+            font-weight: 700;
+            background: #f3f4f6;
+        }
+
+        .items th:first-child,
+        .items td:first-child {
+            border-left: 0;
+        }
+
+        .items th:last-child,
+        .items td:last-child {
+            border-right: 0;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-end {
+            text-align: right;
+        }
+
+        .spacer-row td {
+            height: 180px;
+        }
+
+        .notes {
+            padding: 12px 14px;
+            border-top: 1px solid #111111;
+            min-height: 90px;
+        }
+
+        .signatures {
+            margin-top: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            border-top: 1px solid #111111;
+            min-height: 64px;
+        }
+
+        .signature {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0 8px 10px;
+            border-right: 1px solid #111111;
+            font-weight: 700;
+        }
+
+        .signature:last-child {
+            border-right: 0;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+            }
+
+            .toolbar {
+                display: none;
+            }
+
+            .page {
+                width: auto;
+                min-height: auto;
+                margin: 0;
+                border: 0;
+                padding: 8mm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <a class="btn" href="/api/order_list/">Back to Orders</a>
+        <button class="btn" type="button" onclick="window.print()">Print / Save PDF</button>
+    </div>
+
+    <main class="page">
+        <div class="outer">
+            <section class="top">
+                <div class="company">
+                    <div class="logo-box">H</div>
+                    <div>
+                        <h1>{{ dc_settings.company_name }}</h1>
+                        {% if dc_settings.company_subtitle %}
+                            <p>{{ dc_settings.company_subtitle }}</p>
+                        {% endif %}
+                        {% if dc_settings.company_address %}
+                            <p>{{ dc_settings.company_address|linebreaksbr }}</p>
+                        {% endif %}
+                        {% if dc_settings.company_phone %}
+                            <p><span class="label">Phone:</span> {{ dc_settings.company_phone }}</p>
+                        {% endif %}
+                        {% if dc_settings.company_email %}
+                            <p><span class="label">Email:</span> {{ dc_settings.company_email }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="registration">
+                    <h2>Registration Details</h2>
+                    <p><span class="label">GST No:</span> {{ dc_settings.company_gstin|default:"-" }}</p>
+                    <p><span class="label">PAN:</span> {{ dc_settings.company_pan|default:"-" }}</p>
+                    <p><span class="label">CIN:</span> {{ dc_settings.company_cin|default:"-" }}</p>
+                    <p><span class="label">MSME:</span> {{ dc_settings.company_msme|default:"-" }}</p>
+                </div>
+            </section>
+
+            <section class="title">
+                <h2>Delivery Note</h2>
+                {% if dc_settings.dc_insurance_note %}
+                    <p>{{ dc_settings.dc_insurance_note }}</p>
+                {% endif %}
+            </section>
+
+            <section class="info-grid">
+                <div class="address">
+                    <h3>Bill To</h3>
+                    <p><strong>{{ order.customer_name }}</strong></p>
+                    <p>{{ order.state|default:"-" }}</p>
+                    <p>State Code: {{ order.state_code|default:"-" }}</p>
+                    {% if order.is_b2b %}
+                        <p>GSTIN: {{ order.gst_number|default:"-" }}</p>
+                    {% endif %}
+                    <p>INDIA</p>
+                </div>
+
+                <div class="address">
+                    <h3>Ship To</h3>
+                    <p><strong>{{ order.customer_name }}</strong></p>
+                    <p>{{ order.state|default:"-" }}</p>
+                    <p>State Code: {{ order.state_code|default:"-" }}</p>
+                    {% if order.is_b2b %}
+                        <p>GSTIN: {{ order.gst_number|default:"-" }}</p>
+                    {% endif %}
+                    <p>INDIA</p>
+                </div>
+
+                <div class="meta">
+                    <div class="meta-row">
+                        <span>Doc No</span><span>:</span><strong>{{ dc_doc_no }}</strong>
+                    </div>
+                    <div class="meta-row">
+                        <span>Delivery No</span><span>:</span><strong>{{ dc_delivery_no }}</strong>
+                    </div>
+                    <div class="meta-row">
+                        <span>Date</span><span>:</span><strong>{{ order.dc_date|date:"d-m-Y" }}</strong>
+                    </div>
+                    <div class="meta-row">
+                        <span>Terms of Delivery</span><span>:</span><strong>{{ dc_settings.dc_terms|default:"-" }}</strong>
+                    </div>
+                    <div class="meta-row">
+                        <span>Mode of Transport</span><span>:</span><strong>{{ dc_settings.dc_transport_mode|default:"-" }}</strong>
+                    </div>
+                    <div class="meta-row">
+                        <span>Vehicle No</span><span>:</span><strong>{{ dc_settings.dc_vehicle_no|default:"-" }}</strong>
+                    </div>
+                </div>
+            </section>
+
+            <table class="items">
+                <thead>
+                    <tr>
+                        <th style="width: 7%;">S.No</th>
+                        <th style="width: 12%;">HSN</th>
+                        <th>Description of goods</th>
+                        <th style="width: 16%;">Batch</th>
+                        <th style="width: 10%;">Quantity</th>
+                        <th style="width: 9%;">UOM</th>
+                        <th style="width: 10%;">Qty in Kgs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in dc_items %}
+                        <tr>
+                            <td class="text-center">{{ item.sl_no }}</td>
+                            <td class="text-center">{{ dc_settings.dc_default_hsn|default:"-" }}</td>
+                            <td>
+                                <strong>{{ item.product.sku }}</strong><br>
+                                {{ item.product.name }} - {{ item.product.style }} {{ item.product.gender }} {{ item.product.color }} {{ item.product.size }}
+                            </td>
+                            <td class="text-center">{{ item.batch|default:"-" }}</td>
+                            <td class="text-end">{{ item.quantity|floatformat:2 }}</td>
+                            <td class="text-center">{{ item.uom }}</td>
+                            <td class="text-end">{{ item.qty_kgs|floatformat:2 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No items found for this order.</td>
+                        </tr>
+                    {% endfor %}
+                    <tr class="spacer-row">
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <section class="notes">
+                <p><span class="label">Remarks:</span> {{ order.remarks|default:"-" }}</p>
+                {% if dc_settings.dc_footer_note %}
+                    <p><span class="label">Note:</span></p>
+                    <p>{{ dc_settings.dc_footer_note|linebreaksbr }}</p>
+                {% endif %}
+            </section>
+
+            <section class="signatures">
+                <div class="signature">Party Signature</div>
+                <div class="signature">Received The Material</div>
+                <div class="signature">Authorized Signatory</div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
