@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Import Orders</h3>
+        <a href="/api/order_list/" class="btn btn-secondary">Back to Orders</a>
+    </div>
+
+    <div class="card p-3 shadow-sm mb-3">
+        <h5 class="mb-3">Import from Amazon SP-API</h5>
+        <form method="post" class="mb-4">
+            {% csrf_token %}
+            <input type="hidden" name="import_source" value="sp_api">
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="from_date">From Date</label>
+                    <input
+                        type="date"
+                        id="from_date"
+                        name="from_date"
+                        class="form-control"
+                        required
+                    >
+                </div>
+                <div class="col-md-4">
+                    <label for="to_date">To Date</label>
+                    <input
+                        type="date"
+                        id="to_date"
+                        name="to_date"
+                        class="form-control"
+                        required
+                    >
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success w-100">Fetch from Amazon API</button>
+                </div>
+            </div>
+        </form>
+
+        <hr>
+
+        <h5 class="mb-3">Import from Amazon Report</h5>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="import_source" value="excel">
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label for="order_report">Amazon Order Report</label>
+                    <input
+                        type="file"
+                        id="order_report"
+                        name="order_report"
+                        class="form-control"
+                        accept=".xlsx,.xlsm"
+                        required
+                    >
+                </div>
+
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Import Orders</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if sp_import_result %}
+    <div class="card p-3 shadow-sm mb-3">
+        <h5>Amazon SP-API Import Summary</h5>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Orders Found</div>
+                    <h4 class="mb-0">{{ sp_import_result.found_count }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Created Orders</div>
+                    <h4 class="mb-0">{{ sp_import_result.created_count }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Updated Orders</div>
+                    <h4 class="mb-0">{{ sp_import_result.updated_count }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Created Items</div>
+                    <h4 class="mb-0">{{ sp_import_result.item_count }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Updated Items</div>
+                    <h4 class="mb-0">{{ sp_import_result.item_updated_count }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Skipped Orders</div>
+                    <h4 class="mb-0">{{ sp_import_result.skipped_count }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Unmapped SKUs</div>
+                    <h4 class="mb-0">{{ sp_import_result.unmapped_skus|length }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Failed</div>
+                    <h4 class="mb-0">{{ sp_import_result.failed_count }}</h4>
+                </div>
+            </div>
+        </div>
+
+        {% if sp_import_result.created_orders %}
+        <h6>Created</h6>
+        <ul class="mb-3">
+            {% for order_number in sp_import_result.created_orders %}
+            <li>{{ order_number }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if sp_import_result.updated_orders %}
+        <h6>Updated</h6>
+        <ul class="mb-3">
+            {% for order_number in sp_import_result.updated_orders %}
+            <li>{{ order_number }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if sp_import_result.skipped_orders %}
+        <h6>Skipped</h6>
+        <ul class="mb-3">
+            {% for skipped_order in sp_import_result.skipped_orders %}
+            <li>{{ skipped_order }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if sp_import_result.unmapped_skus %}
+        <h6>Unmapped SKUs</h6>
+        <ul class="mb-3 text-warning">
+            {% for sku in sp_import_result.unmapped_skus %}
+            <li>{{ sku }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if sp_import_result.errors %}
+        <h6>Errors</h6>
+        <ul class="mb-0 text-danger">
+            {% for error in sp_import_result.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if import_result %}
+    <div class="card p-3 shadow-sm">
+        <h5>Import Summary</h5>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Created Orders</div>
+                    <h4 class="mb-0">{{ import_result.created_count }}</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Created Items</div>
+                    <h4 class="mb-0">{{ import_result.item_count }}</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3">
+                    <div class="text-muted">Skipped Orders</div>
+                    <h4 class="mb-0">{{ import_result.skipped_count }}</h4>
+                </div>
+            </div>
+        </div>
+
+        {% if import_result.created_orders %}
+        <h6>Created</h6>
+        <ul class="mb-3">
+            {% for order_number in import_result.created_orders %}
+            <li>{{ order_number }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if import_result.skipped_orders %}
+        <h6>Skipped</h6>
+        <ul class="mb-3">
+            {% for skipped_order in import_result.skipped_orders %}
+            <li>{{ skipped_order }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if import_result.errors %}
+        <h6>Errors</h6>
+        <ul class="mb-0 text-danger">
+            {% for error in import_result.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

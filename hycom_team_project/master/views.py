@@ -35,6 +35,8 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 from utils.permissions import area_required
 from utils.permissions import can_access_area
+from .amazon_import import import_amazon_orders
+from .portal_imports.amazon_sp_api import import_amazon_orders_via_api
 
 
 def run_async(func, *args):
@@ -190,8 +192,6 @@ def app_settings(request):
 def get_orders(request):
     if request.method == 'GET':
 
-
-
         orders_data = []
 
         orders = Order.objects.all().prefetch_related('items')
@@ -213,9 +213,8 @@ def get_orders(request):
                 "portal": order.portal,
                 "status": order.status,
                 "total_amount": float(order.total_amount),
-                "items": items
+                "items": items,
             })
-
         return JsonResponse(orders_data, safe=False)
 
 
@@ -659,7 +658,7 @@ def create_order_ui(request):
     
 
 
-@area_required('products')
+@area_required('orders')
 def order_list(request):
     search  = request.GET.get('q')
     status = request.GET.get('status')
@@ -696,6 +695,85 @@ def order_list(request):
 
     return render(request, 'order_list.html', {
         'orders': orders,
+    })
+
+
+@area_required('orders')
+def import_orders(request):
+    import_result = None
+    sp_import_result = None
+
+    if request.method == 'POST':
+        import_source = request.POST.get('import_source', 'excel')
+
+        if import_source == 'sp_api':
+            from_date_raw = request.POST.get('from_date')
+            to_date_raw = request.POST.get('to_date')
+
+            try:
+                f_date = datetime.strptime(from_date_raw, "%Y-%m-%d").date()
+                t_date = datetime.strptime(to_date_raw, "%Y-%m-%d").date()
+                if f_date > t_date:
+                    raise ValueError("from_date is after to_date")
+            except (ValueError, TypeError):
+                messages.error(request, "Invalid date range. Use YYYY-MM-DD.")
+            else:
+                try:
+                    sp_import_result = import_amazon_orders_via_api(f_date, t_date)
+                except Exception as exc:
+                    messages.error(request, f"SP-API import failed: {exc}")
+                else:
+                    if sp_import_result.created_count or sp_import_result.updated_count:
+                        messages.success(
+                            request,
+                            f"Amazon SP-API sync complete: "
+                            f"{sp_import_result.created_count} created, "
+                            f"{sp_import_result.updated_count} updated."
+                        )
+                    if sp_import_result.skipped_count:
+                        messages.warning(
+                            request,
+                            f"Skipped {sp_import_result.skipped_count} SP-API order(s). Review details below."
+                        )
+                    if sp_import_result.failed_count:
+                        messages.error(
+                            request,
+                            f"{sp_import_result.failed_count} SP-API order(s) failed. Review details below."
+                        )
+                    if sp_import_result.errors and not (
+                        sp_import_result.created_count or sp_import_result.updated_count
+                    ):
+                        messages.error(request, "No SP-API orders were imported. Review details below.")
+        else:
+            report_file = request.FILES.get('order_report')
+
+            if not report_file:
+                messages.error(request, "Please choose an Amazon order report Excel file.")
+            elif not report_file.name.lower().endswith((".xlsx", ".xlsm")):
+                messages.error(request, "Please upload an Excel file in .xlsx or .xlsm format.")
+            else:
+                try:
+                    import_result = import_amazon_orders(report_file)
+                except Exception as exc:
+                    messages.error(request, f"Import failed: {exc}")
+                else:
+                    if import_result.created_count:
+                        messages.success(
+                            request,
+                            f"Imported {import_result.created_count} order(s) with "
+                            f"{import_result.item_count} item(s)."
+                        )
+                    if import_result.skipped_count:
+                        messages.warning(
+                            request,
+                            f"Skipped {import_result.skipped_count} order(s). Review details below."
+                        )
+                    if import_result.errors and not import_result.created_count:
+                        messages.error(request, "No orders were imported. Review details below.")
+
+    return render(request, 'import_orders.html', {
+        'import_result': import_result,
+        'sp_import_result': sp_import_result,
     })
 
 
@@ -928,17 +1006,13 @@ def dashboard(request):
     return render(request, 'dashboard.html', context)
 
 
-
-
+@area_required('dashboard')
 def export_dashboard_excel(request):
-    from stock.models import Product
-
-    from django.db.models import Sum
+    from openpyxl.styles import Font
 
     from_date = request.GET.get('from_date')
     to_date = request.GET.get('to_date')
-    
-    # Same logic as dashboard - filtered orders count
+
     total_products = Product.objects.count()
     if from_date and to_date:
         total_orders = Order.objects.filter(invoice_date__range=[from_date, to_date]).count()
@@ -946,16 +1020,12 @@ def export_dashboard_excel(request):
         total_orders = Order.objects.count()
     total_stock = Product.objects.aggregate(total=Sum('stock'))['total'] or 0
 
-    ALL_STYLES = ['Core', 'Flexi', 'Ethos']
-    ALL_COLORS = ['Wine Red', 'Hunter Green', 'Ceil Blue', 'Navy Blue']
-    ALL_GENDERS = ['Male', 'Female']
-    ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL']
-
-    from_date = request.GET.get('from_date')
-    to_date = request.GET.get('to_date')
+    all_styles = ['Core', 'Flexi', 'Ethos']
+    all_colors = ['Wine Red', 'Hunter Green', 'Ceil Blue', 'Navy Blue']
+    all_genders = ['Male', 'Female', 'Men', 'Women']
+    all_sizes = ['XS', 'S', 'M', 'L', 'XL', '2XL']
 
     items = OrderItem.objects.select_related('product', 'order')
-
     if from_date and to_date:
         items = items.filter(order__invoice_date__range=[from_date, to_date])
 
@@ -964,130 +1034,82 @@ def export_dashboard_excel(request):
         .annotate(total_qty=Sum('quantity'))
         .order_by('-total_qty')[:10]
     )
-
-    style_qs = (
+    style_data = fill_missing(list(
         items.values('product__style')
         .exclude(product__style__isnull=True)
         .exclude(product__style__exact='')
         .annotate(total=Sum('quantity'))
-    )
-
-    color_qs = (
+    ), 'product__style', all_styles)
+    color_data = fill_missing(list(
         items.values('product__color')
         .exclude(product__color__isnull=True)
         .exclude(product__color__exact='')
         .annotate(total=Sum('quantity'))
-    )
-
-    gender_qs = (
+    ), 'product__color', all_colors)
+    gender_data = fill_missing(list(
         items.values('product__gender')
         .exclude(product__gender__isnull=True)
         .exclude(product__gender__exact='')
         .annotate(total=Sum('quantity'))
-    )
-
-    size_qs = (
+    ), 'product__gender', all_genders)
+    size_data = fill_missing(list(
         items.values('product__size')
         .exclude(product__size__isnull=True)
         .exclude(product__size__exact='')
         .annotate(total=Sum('quantity'))
-    )
+    ), 'product__size', all_sizes)
 
-    style_data = fill_missing(list(style_qs), 'product__style', ALL_STYLES)
-    color_data = fill_missing(list(color_qs), 'product__color', ALL_COLORS)
-    gender_data = fill_missing(list(gender_qs), 'product__gender', ALL_GENDERS)
-    size_data = fill_missing(list(size_qs), 'product__size', ALL_SIZES)
-
-    # Create workbook
     wb = Workbook()
-    wb.remove(wb.active)  # Remove default sheet
+    wb.remove(wb.active)
 
-    # Summary Sheet
     ws_summary = wb.create_sheet('Summary')
     ws_summary.append(['Metric', 'Value'])
     ws_summary.append(['Total Products', total_products])
     ws_summary.append(['Total Orders', total_orders])
     ws_summary.append(['Total Stock', total_stock])
-    ws_summary.append([''])  # spacer
+    ws_summary.append([''])
     ws_summary.append(['Filter Period', f"{from_date or 'All'} to {to_date or 'All'}"])
 
-    # Top Products
     ws_top = wb.create_sheet('Top Products')
     ws_top.append(['Product', 'SKU', 'Total Qty'])
-    for p in top_products:
-        ws_top.append([p['product__name'], p['product__sku'], p['total_qty']])
+    for product in top_products:
+        ws_top.append([
+            product['product__name'],
+            product['product__sku'],
+            product['total_qty'],
+        ])
 
-    # Style Wise
-    ws_style = wb.create_sheet('Style Wise')
-    ws_style.append(['Style', 'Quantity'])
-    total_style = 0
-    for d in style_data:
-        qty = d['total']
-        ws_style.append([d['product__style'], qty])
-        total_style += qty
-    ws_style.append(['TOTAL', total_style])
+    for sheet_name, label, key, rows in [
+        ('Style Wise', 'Style', 'product__style', style_data),
+        ('Color Wise', 'Color', 'product__color', color_data),
+        ('Gender Wise', 'Gender', 'product__gender', gender_data),
+        ('Size Wise', 'Size', 'product__size', size_data),
+    ]:
+        worksheet = wb.create_sheet(sheet_name)
+        worksheet.append([label, 'Quantity'])
+        total = 0
+        for row in rows:
+            qty = row['total']
+            worksheet.append([row[key], qty])
+            total += qty
+        worksheet.append(['TOTAL', total])
 
-    # Color Wise
-    ws_color = wb.create_sheet('Color Wise')
-    ws_color.append(['Color', 'Quantity'])
-    total_color = 0
-    for d in color_data:
-        qty = d['total']
-        ws_color.append([d['product__color'], qty])
-        total_color += qty
-    ws_color.append(['TOTAL', total_color])
-
-    # Gender Wise
-    ws_gender = wb.create_sheet('Gender Wise')
-    ws_gender.append(['Gender', 'Quantity'])
-    total_gender = 0
-    for d in gender_data:
-        qty = d['total']
-        ws_gender.append([d['product__gender'], qty])
-        total_gender += qty
-    ws_gender.append(['TOTAL', total_gender])
-
-    # Size Wise
-    ws_size = wb.create_sheet('Size Wise')
-    ws_size.append(['Size', 'Quantity'])
-    total_size = 0
-    for d in size_data:
-        qty = d['total']
-        ws_size.append([d['product__size'], qty])
-        total_size += qty
-    ws_size.append(['TOTAL', total_size])
-
-    # Auto-fit columns
-    for ws in [ws_summary, ws_top, ws_style, ws_color, ws_gender, ws_size]:
-        for column in ws.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
-
-    # Make headers bold
-    from openpyxl.styles import Font
     bold_font = Font(bold=True)
-    for ws in [ws_summary, ws_top, ws_style, ws_color, ws_gender, ws_size]:
-        # Bold headers (row 1)
-        for cell in ws[1]:
+    for worksheet in wb.worksheets:
+        for cell in worksheet[1]:
             cell.font = bold_font
-        # Bold TOTAL row if exists (last row)
-        last_row = len([row for row in ws.rows])  # materialize to list
-        if last_row > 1 and ws.cell(row=last_row, column=1).value == 'TOTAL':
-            for cell in ws[last_row]:
+        last_row = worksheet.max_row
+        if last_row > 1 and worksheet.cell(row=last_row, column=1).value == 'TOTAL':
+            for cell in worksheet[last_row]:
                 cell.font = bold_font
+        for column in worksheet.columns:
+            column_letter = column[0].column_letter
+            max_length = max(len(str(cell.value or '')) for cell in column)
+            worksheet.column_dimensions[column_letter].width = min(max_length + 2, 50)
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = 'attachment; filename=dashboard.xlsx'
-
     wb.save(response)
     return response

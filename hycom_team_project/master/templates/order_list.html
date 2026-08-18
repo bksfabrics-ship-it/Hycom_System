@@ -9,6 +9,7 @@
         <h3>Orders</h3>
         <div>
             <a href="/api/orders-ui/" class="btn btn-primary">+ Create Order</a>
+            <a href="/api/orders/import/" class="btn btn-outline-primary">Import Orders</a>
             <a href="/api/order-export/" class="btn btn-success">Export</a>
         </div>
     </div>
@@ -88,17 +89,21 @@
                         <td>{{ o.portal }}</td>
 
                         <td>
-                            {% if o.status == 'shipped' %}
-                                <span class="badge bg-success">Shipped</span>
-                            {% elif o.status == 'pending' %}
-                                <span class="badge bg-warning text-dark">Pending</span>
-                            {% elif o.status == 'cancelled' %}
-                                <span class="badge bg-danger">Cancelled</span>
-                            {% elif o.status == 'return_arrived' %}
-                                <span class="badge bg-dark">Returned</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ o.status }}</span>
-                            {% endif %}
+                            {% with status_display=o.get_status_display %}
+                                {% if status_display == 'Shipped' %}
+                                    <span class="badge bg-success">Shipped</span>
+                                {% elif status_display == 'Pending' %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% elif status_display == 'Cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% elif status_display == 'Return Arrived' %}
+                                    <span class="badge bg-dark">Returned</span>
+                                {% elif status_display == 'Return In Transit' %}
+                                    <span class="badge bg-info text-dark">Return In Transit</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ status_display }}</span>
+                                {% endif %}
+                            {% endwith %}
                         </td>
 
                         <td>{{ o.state }}</td>
@@ -148,17 +153,19 @@
                             <a href="/api/orders/delete/{{ o.id }}/" class="btn btn-sm btn-danger"
                                onclick="return confirm('Delete this order?')">Delete</a>
 
-                            {% if o.status == 'Return Arrived'%}
-                                <a href="/returns/create/?order_id={{ o.id }}"
-                                   class="btn btn-sm btn-warning">
-                                   Return
-                                </a>
-                            {% elif o.status == 'Cancelled' %}
-                                <a href="/returns/create/?order_id={{ o.id }}"
-                                   class="btn btn-sm btn-danger">
-                                   Process Cancellation
-                                </a>
-                            {% endif %}
+                            {% with status_display=o.get_status_display %}
+                                {% if status_display == 'Return Arrived' %}
+                                    <a href="/returns/create/?order_id={{ o.id }}"
+                                       class="btn btn-sm btn-warning">
+                                       Return
+                                    </a>
+                                {% elif status_display == 'Cancelled' %}
+                                    <a href="/returns/create/?order_id={{ o.id }}"
+                                       class="btn btn-sm btn-danger">
+                                       Process Cancellation
+                                    </a>
+                                {% endif %}
+                            {% endwith %}
                         </td>
 
                     </tr>

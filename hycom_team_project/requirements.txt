@@ -21,6 +21,7 @@ pyasn1_modules==0.4.2
 pycparser==3.0
 pyparsing==3.3.2
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.1
 requests==2.33.1
 requests-oauthlib==2.0.0
 rsa==4.9.1

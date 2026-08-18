@@ -11,6 +11,7 @@ from .views import (
     order_delivery_challan,
     export_orders,
     export_dashboard_excel,
+    import_orders,
     app_settings,
 )
 from django.contrib.auth import views as auth_views
@@ -21,6 +22,7 @@ urlpatterns = [
     path('orders/delete/<int:pk>/', delete_order),
     path('orders/invoice/<int:pk>/', order_invoice, name='order_invoice'),
     path('orders/dc/<int:pk>/', order_delivery_challan, name='order_delivery_challan'),
+    path('orders/import/', import_orders, name='import_orders'),
     path('order_list/', order_list, name='order_list'),
     path('orders/', get_orders),
     path('orders-ui/', create_order_ui),
