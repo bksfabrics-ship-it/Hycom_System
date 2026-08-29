@@ -17,7 +17,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from datetime import date, datetime, time as datetime_time, timezone
+from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
@@ -37,6 +37,7 @@ SP_API_TOKEN_URL = "https://api.amazon.com/auth/o2/token"
 MARKETPLACE_ID_INDIA = "A21TJRUUN4KGV"
 ORDERS_API_VERSION = "2026-01-01"
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
+SP_API_BEFORE_BUFFER = timedelta(minutes=2)
 INCLUDED_ORDER_DATA = [
     "BUYER",
     "RECIPIENT",
@@ -106,6 +107,28 @@ def iso_utc_start(value: date) -> str:
 def iso_utc_end(value: date) -> str:
     return datetime.combine(value, datetime_time.max, tzinfo=timezone.utc).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
+def build_created_time_window(from_date: date, to_date: date) -> tuple[str, str]:
+    created_after = datetime.combine(
+        from_date, datetime_time.min, tzinfo=timezone.utc
+    )
+    requested_before = datetime.combine(
+        to_date, datetime_time.max, tzinfo=timezone.utc
+    )
+    latest_allowed_before = datetime.now(timezone.utc) - SP_API_BEFORE_BUFFER
+    created_before = min(requested_before, latest_allowed_before)
+
+    if created_before <= created_after:
+        raise AmazonSPAPIError(
+            "Invalid SP-API date range. The end of the selected range must be "
+            "after the start date and at least 2 minutes before the current time."
+        )
+
+    return (
+        created_after.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        created_before.strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
 
 
@@ -430,9 +453,10 @@ class AmazonSPAPIClient:
     def search_orders(self, from_date: date, to_date: date) -> list[dict]:
         path = f"/orders/{ORDERS_API_VERSION}/orders"
         all_orders = []
+        created_after, created_before = build_created_time_window(from_date, to_date)
         params = {
-            "createdAfter": iso_utc_start(from_date),
-            "createdBefore": iso_utc_end(to_date),
+            "createdAfter": created_after,
+            "createdBefore": created_before,
             "marketplaceIds": self.marketplace_id,
             "maxResultsPerPage": 100,
         }

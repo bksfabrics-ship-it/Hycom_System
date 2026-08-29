@@ -37,6 +37,7 @@ from utils.permissions import area_required
 from utils.permissions import can_access_area
 from .amazon_import import import_amazon_orders
 from .portal_imports.amazon_sp_api import import_amazon_orders_via_api
+from .portal_imports.flipkart_api import import_flipkart_orders_via_api
 
 
 def run_async(func, *args):
@@ -702,6 +703,7 @@ def order_list(request):
 def import_orders(request):
     import_result = None
     sp_import_result = None
+    flipkart_import_result = None
 
     if request.method == 'POST':
         import_source = request.POST.get('import_source', 'excel')
@@ -744,6 +746,44 @@ def import_orders(request):
                         sp_import_result.created_count or sp_import_result.updated_count
                     ):
                         messages.error(request, "No SP-API orders were imported. Review details below.")
+        elif import_source == 'flipkart_api':
+            from_date_raw = request.POST.get('from_date')
+            to_date_raw = request.POST.get('to_date')
+
+            try:
+                f_date = datetime.strptime(from_date_raw, "%Y-%m-%d").date()
+                t_date = datetime.strptime(to_date_raw, "%Y-%m-%d").date()
+                if f_date > t_date:
+                    raise ValueError("from_date is after to_date")
+            except (ValueError, TypeError):
+                messages.error(request, "Invalid date range. Use YYYY-MM-DD.")
+            else:
+                try:
+                    flipkart_import_result = import_flipkart_orders_via_api(f_date, t_date)
+                except Exception as exc:
+                    messages.error(request, f"Flipkart import failed: {exc}")
+                else:
+                    if flipkart_import_result.created_count or flipkart_import_result.updated_count:
+                        messages.success(
+                            request,
+                            f"Flipkart sync complete: "
+                            f"{flipkart_import_result.created_count} created, "
+                            f"{flipkart_import_result.updated_count} updated."
+                        )
+                    if flipkart_import_result.skipped_count:
+                        messages.warning(
+                            request,
+                            f"Skipped {flipkart_import_result.skipped_count} Flipkart order(s). Review details below."
+                        )
+                    if flipkart_import_result.failed_count:
+                        messages.error(
+                            request,
+                            f"{flipkart_import_result.failed_count} Flipkart order(s) failed. Review details below."
+                        )
+                    if flipkart_import_result.errors and not (
+                        flipkart_import_result.created_count or flipkart_import_result.updated_count
+                    ):
+                        messages.error(request, "No Flipkart orders were imported. Review details below.")
         else:
             report_file = request.FILES.get('order_report')
 
@@ -774,6 +814,7 @@ def import_orders(request):
     return render(request, 'import_orders.html', {
         'import_result': import_result,
         'sp_import_result': sp_import_result,
+        'flipkart_import_result': flipkart_import_result,
     })
 
 
