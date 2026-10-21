@@ -1,6 +1,16 @@
 from django.urls import path
 from . import views
-from .views import product_list, export_products, edit_product, delete_product, create_product, get_product_by_sku, bulk_upload_products, download_sample_products
+from .views import (
+    bulk_upload_products,
+    create_product,
+    delete_product,
+    download_sample_products,
+    edit_product,
+    export_products,
+    get_product_by_sku,
+    invoice_converter,
+    product_list,
+)
 
 urlpatterns = [
     path('api/get-product-by-sku/', get_product_by_sku),
@@ -11,4 +21,5 @@ urlpatterns = [
     path('product/delete/<int:pk>/', delete_product),
     path('products/upload/', bulk_upload_products),
     path('products/sample/', download_sample_products),
+    path('invoice-converter/', invoice_converter, name='invoice_converter'),
 ]

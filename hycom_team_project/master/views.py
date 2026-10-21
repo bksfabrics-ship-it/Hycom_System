@@ -1,12 +1,18 @@
 import logging
+import uuid
+import xml.etree.ElementTree as ET
+import secrets
+from functools import wraps
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET
 from django.db import transaction
 import json
 
 from urllib3 import request
-from .models import InvoiceSetting, NotificationSetting, Order, OrderItem
+from .models import InvoiceSetting, NotificationSetting, Order, OrderItem, State
 from stock.models import Product
 from django.shortcuts import render, redirect
 from django.forms import formset_factory, modelformset_factory
@@ -38,12 +44,32 @@ from utils.permissions import can_access_area
 from .amazon_import import import_amazon_orders
 from .portal_imports.amazon_sp_api import import_amazon_orders_via_api
 from .portal_imports.flipkart_api import import_flipkart_orders_via_api
+from .invoice_import import parse_invoice_pdf
 
 
 def run_async(func, *args):
     thread = threading.Thread(target=func, args=args, daemon=True)
     thread.start()
 
+
+def sap_api_key_required(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        api_key = settings.SAP_API_KEY
+        if not api_key:
+            return JsonResponse(
+                {"error": "SAP API access is not configured."},
+                status=503,
+            )
+
+        expected_authorization = f"Bearer {api_key}".encode("utf-8")
+        authorization = request.headers.get("Authorization", "").encode("utf-8")
+        if not secrets.compare_digest(authorization, expected_authorization):
+            return JsonResponse({"error": "Unauthorized."}, status=401)
+
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
 
 
 def update_stock_for_order(order, reverse=False):
@@ -217,6 +243,88 @@ def get_orders(request):
                 "items": items,
             })
         return JsonResponse(orders_data, safe=False)
+
+
+def _append_xml(parent, tag, value):
+    element = ET.SubElement(parent, tag)
+    element.text = "" if value is None else str(value)
+    return element
+
+
+def _format_xml_amount(value):
+    return f"{Decimal(str(value or 0)):.2f}"
+
+
+@require_GET
+# @sap_api_key_required
+def export_orders_xml(request):
+    root = ET.Element("HycomOrderExport", {"version": "1.0"})
+    for order in (
+        Order.objects.select_related("state")
+        .prefetch_related(Prefetch("items", queryset=OrderItem.objects.select_related("product")))
+        .order_by("id")
+    ):
+        order_element = ET.SubElement(root, "Order")
+        _append_xml(order_element, "OrderNumber", order.order_number)
+        _append_xml(order_element, "Portal", order.portal)
+        _append_xml(order_element, "Status", order.status)
+        _append_xml(order_element, "Fulfilment", order.fulfilment)
+        _append_xml(order_element, "CustomerName", order.customer_name)
+        _append_xml(order_element, "BillingAddress", order.billing_address)
+        _append_xml(order_element, "ShippingAddress", order.shipping_address)
+        _append_xml(order_element, "StateCode", order.state_code or (order.state.code if order.state else ""))
+        _append_xml(order_element, "IsB2B", str(order.is_b2b).lower())
+        _append_xml(order_element, "GSTNumber", order.gst_number or "")
+
+        invoice = ET.SubElement(order_element, "Invoice")
+        _append_xml(invoice, "Number", order.invoice_number)
+        _append_xml(invoice, "Date", order.invoice_date.isoformat())
+
+        totals = ET.SubElement(order_element, "Totals", {"currency": "INR"})
+        line_total = sum(
+            (
+                (item.price or Decimal("0.00")) * item.quantity
+                for item in order.items.all()
+            ),
+            Decimal("0.00"),
+        )
+        for tag, value in (
+            ("TaxableAmount", order.amount),
+            ("GSTAmount", order.gst),
+            ("CGST", order.cgst),
+            ("SGST", order.sgst),
+            ("IGST", order.igst),
+            ("OtherCharges", Decimal(str(order.total_amount or 0)) - line_total),
+            ("TotalAmount", order.total_amount),
+        ):
+            _append_xml(totals, tag, _format_xml_amount(value))
+
+        items_element = ET.SubElement(order_element, "Items")
+        for item in order.items.all():
+            item_element = ET.SubElement(items_element, "Item")
+            _append_xml(item_element, "SKU", item.product.sku)
+            _append_xml(item_element, "MaterialCode", item.product.material_code or "")
+            _append_xml(item_element, "ProductName", item.product.name)
+            _append_xml(item_element, "Quantity", item.quantity)
+            unit_price = item.price or Decimal("0.00")
+            _append_xml(item_element, "UnitPrice", _format_xml_amount(unit_price))
+            _append_xml(
+                item_element,
+                "LineTotal",
+                _format_xml_amount(unit_price * item.quantity),
+            )
+
+    content = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    response = HttpResponse(content, content_type="application/xml; charset=utf-8")
+    response["Content-Disposition"] = 'inline; filename="hycom-orders.xml"'
+    return response
+
+
+def _invoice_product(sku):
+    product = Product.objects.filter(sku__iexact=sku).first()
+    if product:
+        return product
+    return Product.objects.filter(material_code__iexact=sku).exclude(material_code="").first()
 
 
 
@@ -708,7 +816,150 @@ def import_orders(request):
     if request.method == 'POST':
         import_source = request.POST.get('import_source', 'excel')
 
-        if import_source == 'sp_api':
+        if import_source == 'invoice_confirm':
+            token = request.POST.get("invoice_preview_token", "")
+            session_key = f"invoice_preview_{token}"
+            invoices = request.session.get(session_key)
+            if not token or not invoices:
+                messages.error(request, "Invoice preview expired. Please upload the PDF again.")
+                return redirect("/api/orders/import/")
+
+            try:
+                with transaction.atomic():
+                    for invoice_index, invoice_data in enumerate(invoices):
+                        if Order.objects.filter(
+                            Q(order_number=invoice_data["order_number"])
+                            | Q(invoice_number=invoice_data["invoice_number"])
+                        ).exists():
+                            raise ValueError(
+                                f"Order or invoice {invoice_data['invoice_number']} already exists."
+                            )
+
+                        mapped_items = []
+                        stock_requirements = {}
+                        for item_index, item_data in enumerate(invoice_data["items"]):
+                            product_id = request.POST.get(
+                                f"product_{invoice_index}_{item_index}"
+                            )
+                            product = None
+                            if product_id and product_id.isdigit():
+                                products = Product.objects.select_for_update()
+                                product = products.filter(
+                                    pk=int(product_id),
+                                    is_active=True,
+                                ).first()
+                            if not product:
+                                raise ValueError(
+                                    f"Choose an active product for invoice SKU {item_data['sku']}."
+                                )
+                            quantity = int(item_data["quantity"])
+                            if quantity < 1:
+                                raise ValueError(f"Invalid quantity for SKU {item_data['sku']}.")
+                            mapped_items.append((product, quantity, Decimal(item_data["unit_price"])))
+                            if product.pk in stock_requirements:
+                                stock_requirements[product.pk][1] += quantity
+                            else:
+                                stock_requirements[product.pk] = [product, quantity]
+
+                        for product, required_quantity in stock_requirements.values():
+                            if product.stock < required_quantity:
+                                raise ValueError(
+                                    f"Not enough stock for {product.name} "
+                                    f"(SKU {product.sku}); {required_quantity} required, "
+                                    f"{product.stock} available."
+                                )
+
+                        state = State.objects.filter(code=invoice_data["state_code"]).first()
+                        order = Order.objects.create(
+                            portal=invoice_data["portal"],
+                            order_number=invoice_data["order_number"],
+                            customer_name=invoice_data["customer_name"][:200],
+                            billing_address=invoice_data["billing_address"],
+                            shipping_address=invoice_data["shipping_address"],
+                            state=state,
+                            state_code=invoice_data["state_code"] or "",
+                            invoice_number=invoice_data["invoice_number"],
+                            invoice_date=invoice_data["invoice_date"],
+                            fulfilment=invoice_data["fulfilment"],
+                            is_b2b=invoice_data["is_b2b"],
+                            gst_number=invoice_data["gst_number"] or None,
+                            status="Pending",
+                            is_stock_updated=True,
+                            amount=float(invoice_data["amount"]),
+                            gst=float(invoice_data["gst"]),
+                            cgst=float(invoice_data["cgst"]),
+                            sgst=float(invoice_data["sgst"]),
+                            igst=float(invoice_data["igst"]),
+                            total_amount=float(invoice_data["total_amount"]),
+                        )
+                        for product, quantity, unit_price in mapped_items:
+                            OrderItem.objects.create(
+                                order=order,
+                                product=product,
+                                quantity=quantity,
+                                price=unit_price,
+                            )
+                        for product, required_quantity in stock_requirements.values():
+                            product.stock -= required_quantity
+                            product.save(update_fields=["stock"])
+            except (ValueError, ValidationError) as exc:
+                messages.error(request, str(exc))
+                return redirect("/api/orders/import/")
+
+            del request.session[session_key]
+            messages.success(request, f"Created {len(invoices)} order(s) from the invoice PDF.")
+            return redirect("/api/order_list/")
+
+        elif import_source == 'invoice_pdf':
+            invoice_file = request.FILES.get("invoice_pdf")
+            if not invoice_file:
+                messages.error(request, "Please choose a searchable invoice PDF.")
+            elif not invoice_file.name.lower().endswith(".pdf"):
+                messages.error(request, "Please upload a PDF invoice.")
+            elif invoice_file.size > 15 * 1024 * 1024:
+                messages.error(request, "The PDF must be 15 MB or smaller.")
+            else:
+                try:
+                    invoices = [invoice.as_dict() for invoice in parse_invoice_pdf(invoice_file)]
+                except ValueError as exc:
+                    messages.error(request, str(exc))
+                else:
+                    preview_token = uuid.uuid4().hex
+                    request.session[f"invoice_preview_{preview_token}"] = json.loads(
+                        json.dumps(invoices)
+                    )
+                    available_products = Product.objects.filter(
+                        is_active=True
+                    ).order_by("sku")
+                    for invoice in invoices:
+                        invoice["duplicate"] = Order.objects.filter(
+                            Q(order_number=invoice["order_number"])
+                            | Q(invoice_number=invoice["invoice_number"])
+                        ).exists()
+                        invoice["items"] = [
+                            {
+                                **item,
+                                "product": _invoice_product(item["sku"]),
+                            }
+                            for item in invoice["items"]
+                        ]
+                        for item in invoice["items"]:
+                            item["stock_available"] = (
+                                bool(item["product"])
+                                and item["product"].stock >= int(item["quantity"])
+                            )
+                    request.session.modified = True
+                    return render(request, "import_orders.html", {
+                        "import_result": import_result,
+                        "sp_import_result": sp_import_result,
+                        "flipkart_import_result": flipkart_import_result,
+                        "invoice_preview": invoices,
+                        "invoice_preview_token": preview_token,
+                        "invoice_can_import": all(not invoice["duplicate"] for invoice in invoices),
+                        "available_products": available_products,
+                    })
+
+        elif import_source == 'sp_api':
             from_date_raw = request.POST.get('from_date')
             to_date_raw = request.POST.get('to_date')
 

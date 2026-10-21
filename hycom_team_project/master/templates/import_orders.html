@@ -102,6 +102,129 @@
         </form>
     </div>
 
+    <div class="card p-3 shadow-sm mb-3">
+        <h5 class="mb-2">Import Orders from Invoice PDF</h5>
+        <p class="text-muted">
+            Upload a searchable Amazon, Flipkart, or Shopify invoice PDF. Check the extracted
+            details before creating the order. Scanned image-only PDFs are not supported.
+        </p>
+        <p>SAP XML endpoint: <a href="/api/sap/orders.xml">GET /api/sap/orders.xml</a></p>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="import_source" value="invoice_pdf">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label for="invoice_pdf">Invoice PDF</label>
+                    <input
+                        type="file"
+                        id="invoice_pdf"
+                        name="invoice_pdf"
+                        class="form-control"
+                        accept=".pdf,application/pdf"
+                        required
+                    >
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Read Invoice</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if invoice_preview %}
+    <div class="card p-3 shadow-sm mb-3">
+        <h5>Review Extracted Invoices</h5>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="import_source" value="invoice_confirm">
+            <input type="hidden" name="invoice_preview_token" value="{{ invoice_preview_token }}">
+        {% for invoice in invoice_preview %}
+        <div class="border rounded p-3 mb-3">
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>Portal:</strong> {{ invoice.portal|title }}<br>
+                    <strong>Order:</strong> {{ invoice.order_number }}<br>
+                    <strong>Invoice:</strong> {{ invoice.invoice_number }}<br>
+                    <strong>Invoice date:</strong> {{ invoice.invoice_date }}<br>
+                    <strong>Customer:</strong> {{ invoice.customer_name }}
+                    {% if invoice.billing_address %}
+                    <br><strong>Billing address:</strong><br>{{ invoice.billing_address|linebreaksbr }}
+                    {% endif %}
+                    {% if invoice.shipping_address %}
+                    <br><strong>Shipping address:</strong><br>{{ invoice.shipping_address|linebreaksbr }}
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <strong>B2B:</strong> {{ invoice.is_b2b|yesno:"Yes,No" }}<br>
+                    <strong>GST number:</strong> {{ invoice.gst_number|default:"-" }}<br>
+                    <strong>Total:</strong> Rs. {{ invoice.total_amount }}<br>
+                    <strong>Tax:</strong> Rs. {{ invoice.gst }}
+                </div>
+            </div>
+
+            {% if invoice.duplicate %}
+            <div class="alert alert-danger mt-3 mb-0">
+                This order or invoice number already exists and cannot be imported again.
+            </div>
+            {% endif %}
+
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead>
+                        <tr>
+                            <th>Invoice SKU</th>
+                            <th>Matched Product</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in invoice.items %}
+                        <tr>
+                            <td>{{ item.sku }}</td>
+                            <td>
+                                <select
+                                    name="product_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}"
+                                    class="form-control"
+                                    required
+                                >
+                                    <option value="">Choose the matching product</option>
+                                    {% for product in available_products %}
+                                    <option
+                                        value="{{ product.id }}"
+                                        {% if item.product and item.product.id == product.id %}selected{% endif %}
+                                    >
+                                        {{ product.sku }} - {{ product.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if item.product and not item.stock_available %}
+                                <span class="text-danger">The matched product does not have enough stock; select another product or update stock.</span>
+                                {% elif not item.product %}
+                                <span class="text-warning">No exact SKU match; choose the correct product from the list.</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.quantity }}</td>
+                            <td>Rs. {{ item.unit_price }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+
+            <button
+                type="submit"
+                class="btn btn-success"
+                {% if not invoice_can_import %}disabled{% endif %}
+            >
+                Confirm and Create Order(s)
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
     {% if sp_import_result %}
     <div class="card p-3 shadow-sm mb-3">
         <h5>Amazon SP-API Import Summary</h5>

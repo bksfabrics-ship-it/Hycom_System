@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <h3 class="mb-3">Invoice Converter</h3>
+
+    <div class="card p-4 shadow-sm">
+        <p>
+            Upload the DC input workbook to generate an SAP invoice workbook,
+            with a separate worksheet for each DC Number.
+        </p>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="invoice-input" class="form-label">DC input workbook (.xlsx)</label>
+                <input
+                    id="invoice-input"
+                    type="file"
+                    name="file"
+                    class="form-control"
+                    accept=".xlsx"
+                    required
+                >
+            </div>
+            <button type="submit" class="btn btn-primary">Convert and Download</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

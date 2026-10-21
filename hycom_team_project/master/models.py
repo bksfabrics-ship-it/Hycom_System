@@ -91,6 +91,8 @@ class Order(models.Model):
     portal = models.CharField(max_length=20, choices=PORTAL_CHOICES)
     order_number = models.CharField(max_length=100)
     customer_name = models.CharField(max_length=200)
+    billing_address = models.TextField(blank=True, default="")
+    shipping_address = models.TextField(blank=True, default="")
     state = models.ForeignKey(State, on_delete=models.SET_NULL, null=True, blank=True)
     state_code = models.CharField(max_length=10, blank=True, null=True)
 

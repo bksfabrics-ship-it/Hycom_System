@@ -14,6 +14,7 @@ import csv
 from django.contrib.auth.decorators import login_required
 from utils.permissions import area_required
 from utils.permissions import can_access_area
+from .invoice_converter import convert_dc_excel
 
 
 @area_required('products')
@@ -255,3 +256,43 @@ def download_sample_products(request):
     ])
 
     return response
+
+
+@area_required('products')
+def invoice_converter(request):
+    if request.method == 'POST':
+        uploaded_file = request.FILES.get('file')
+        if uploaded_file is None:
+            messages.error(request, "Select an Excel file to convert.")
+            return render(request, 'invoice_converter.html')
+
+        if not uploaded_file.name.lower().endswith('.xlsx'):
+            messages.error(request, "Upload an Excel workbook in .xlsx format.")
+            return render(request, 'invoice_converter.html')
+
+        try:
+            output = convert_dc_excel(uploaded_file)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return render(request, 'invoice_converter.html')
+        except Exception:
+            logger.exception("Failed to convert an uploaded DC input workbook.")
+            messages.error(
+                request,
+                "The workbook could not be converted. Please check the file and try again.",
+            )
+            return render(request, 'invoice_converter.html')
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type=(
+                'application/vnd.openxmlformats-officedocument.'
+                'spreadsheetml.sheet'
+            ),
+        )
+        response['Content-Disposition'] = (
+            'attachment; filename="SAP_Invoice_Output.xlsx"'
+        )
+        return response
+
+    return render(request, 'invoice_converter.html')

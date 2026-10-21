@@ -626,6 +626,11 @@ class AmazonSPAPI(PortalImport):
 
                     existing_item_count = order.items.count()
                     if existing_item_count:
+                        # ✅ Restore stock from the previously imported items before replacing them.
+                        for old_item in order.items.all():
+                            old_product = old_item.product
+                            old_product.stock += old_item.quantity
+                            old_product.save(update_fields=["stock"])
                         order.items.all().delete()
 
                     for item_data in items_data:
@@ -635,6 +640,16 @@ class AmazonSPAPI(PortalImport):
                             quantity=item_data["quantity"],
                             price=item_data["price"],
                         )
+
+                    # ✅ Reduce stock as per ordered quantity (allowed to go negative).
+                    for item_data in items_data:
+                        product = item_data["product"]
+                        product.stock -= item_data["quantity"]
+                        product.save(update_fields=["stock"])
+
+                    # ✅ Mark stock as updated so it is never deducted twice.
+                    order.is_stock_updated = True
+                    order.save(update_fields=["is_stock_updated"])
 
                     if created:
                         result.item_count += len(items_data)

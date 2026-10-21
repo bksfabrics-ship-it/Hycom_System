@@ -575,6 +575,10 @@
             <span>🧾</span>
             Products
         </a>
+        <a href="/stock/invoice-converter/" class="menu-item">
+            <span>📄</span>
+            Invoice Converter
+        </a>
         {% endif %}
 
         {% has_permission request.user 'reports' as can_reports %}
@@ -750,7 +754,14 @@ document.addEventListener("DOMContentLoaded", function () {
     /* PRODUCTS */
     else if (path.includes('/stock/')) {
 
-        document.querySelector('a[href="/stock/products/"]')?.classList.add('active');
+        const invoiceConverterLink =
+            document.querySelector('a[href="/stock/invoice-converter/"]');
+
+        if (path.startsWith('/stock/invoice-converter/')) {
+            invoiceConverterLink?.classList.add('active');
+        } else {
+            document.querySelector('a[href="/stock/products/"]')?.classList.add('active');
+        }
     }
 
     /* REPORTS */

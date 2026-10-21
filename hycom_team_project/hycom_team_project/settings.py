@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 from django.contrib.messages import constants as messages
+from django.core.exceptions import ImproperlyConfigured
 try:
     from dotenv import load_dotenv
 except ImportError:
@@ -29,15 +30,46 @@ if load_dotenv:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-insecure-key-change-me')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes', 'on')
 
-allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
-ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()] or ['localhost','127.0.0.1', '192.168.123.59']
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set when DEBUG is False.')
+    SECRET_KEY = 'dev-insecure-key-change-me'
 
+allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in allowed_hosts_env.split(',')
+    if host.strip()
+] or ['localhost', '127.0.0.1']
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
+
+def env_flag(name, default=False):
+    return os.environ.get(name, str(default)).lower() in ('1', 'true', 'yes', 'on')
+
+
+SECURE_PROXY_SSL_HEADER = (
+    ('HTTP_X_FORWARDED_PROTO', 'https')
+    if env_flag('DJANGO_TRUST_PROXY_SSL')
+    else None
+)
+SECURE_SSL_REDIRECT = env_flag('DJANGO_SECURE_SSL_REDIRECT')
+SESSION_COOKIE_SECURE = env_flag('DJANGO_SECURE_COOKIES')
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_flag('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS')
+SECURE_HSTS_PRELOAD = env_flag('DJANGO_SECURE_HSTS_PRELOAD')
+SAP_API_KEY = os.environ.get('SAP_API_KEY', '')
 
 
 # Application definition
@@ -202,6 +234,3 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 LOGIN_REDIRECT_URL = '/api/'
 
 # Password management routes are custom in accounts app.
-
-
-
