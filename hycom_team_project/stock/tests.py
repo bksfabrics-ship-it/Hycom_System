@@ -50,17 +50,40 @@ class InvoiceConverterTests(SimpleTestCase):
         self.assertEqual(first_sheet["B7"].value, "DC-101")
         self.assertEqual(first_sheet["B9"].value, 2)
         self.assertEqual(first_sheet["C10"].value, 5)
-        self.assertEqual(first_sheet["E10"].value, 0)
+        self.assertIsNone(first_sheet["E10"].value)
         self.assertEqual(first_sheet["B11"].value, "SKU-001")
 
         second_sheet = workbook["DC_DC-102"]
         self.assertEqual(second_sheet["B4"].value, "B TO C")
         self.assertEqual(second_sheet["E10"].value, 10)
 
-    def test_rejects_workbooks_missing_required_columns(self):
+    def test_accepts_missing_columns_and_preserves_rows_without_a_sku(self):
         input_file = BytesIO()
-        pd.DataFrame({"SAP SKU": ["SKU-001"]}).to_excel(input_file, index=False)
+        pd.DataFrame(
+            {"Qty": [3, "not numeric"], "Tax": [7, None]}
+        ).to_excel(input_file, index=False)
         input_file.seek(0)
 
-        with self.assertRaisesRegex(ValueError, "Missing required column"):
-            convert_dc_excel(input_file)
+        workbook = load_workbook(convert_dc_excel(input_file), data_only=True)
+        sheet = workbook[workbook.sheetnames[0]]
+
+        self.assertIsNone(sheet["B3"].value)
+        self.assertIsNone(sheet["B4"].value)
+        self.assertIsNone(sheet["B5"].value)
+        self.assertIsNone(sheet["B7"].value)
+        self.assertEqual(sheet["B9"].value, 3)
+        self.assertIsNone(sheet["B10"].value)
+        self.assertEqual(sheet["D10"].value, 7)
+        self.assertIsNone(sheet["E10"].value)
+        self.assertIsNone(sheet["B11"].value)
+        self.assertEqual(sheet["B13"].value, "not numeric")
+
+    def test_converts_empty_workbook_to_a_blank_invoice_sheet(self):
+        input_file = BytesIO()
+        pd.DataFrame().to_excel(input_file, index=False)
+        input_file.seek(0)
+
+        workbook = load_workbook(convert_dc_excel(input_file), data_only=True)
+
+        self.assertEqual(workbook.sheetnames, ["DC_"])
+        self.assertIsNone(workbook["DC_"]["B3"].value)
