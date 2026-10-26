@@ -78,6 +78,31 @@ class InvoiceConverterTests(SimpleTestCase):
         self.assertIsNone(sheet["B11"].value)
         self.assertEqual(sheet["B13"].value, "not numeric")
 
+    def test_keeps_rows_with_blank_dc_numbers_on_the_previous_dc_sheet(self):
+        input_file = BytesIO()
+        pd.DataFrame(
+            {
+                "DC Number": ["DC-101", None, None],
+                "SAP SKU": ["SKU-001", "SKU-002", "SKU-003"],
+                "Qty": [1, 2, 3],
+            }
+        ).to_excel(input_file, index=False)
+        input_file.seek(0)
+
+        workbook = load_workbook(convert_dc_excel(input_file), data_only=True)
+
+        self.assertEqual(workbook.sheetnames, ["DC_DC-101"])
+        sheet = workbook["DC_DC-101"]
+        self.assertEqual(sheet["B7"].value, "DC-101")
+        self.assertEqual(
+            [sheet.cell(row=row, column=2).value for row in (9, 13, 17)],
+            [1, 2, 3],
+        )
+        self.assertEqual(
+            [sheet.cell(row=row, column=2).value for row in (11, 15, 19)],
+            ["SKU-001", "SKU-002", "SKU-003"],
+        )
+
     def test_converts_empty_workbook_to_a_blank_invoice_sheet(self):
         input_file = BytesIO()
         pd.DataFrame().to_excel(input_file, index=False)

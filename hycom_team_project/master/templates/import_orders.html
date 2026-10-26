@@ -108,7 +108,7 @@
             Upload a searchable Amazon, Flipkart, or Shopify invoice PDF. Check the extracted
             details before creating the order. Scanned image-only PDFs are not supported.
         </p>
-        <p>SAP XML endpoint: <a href="/api/sap/orders.xml">GET /api/sap/orders.xml</a></p>
+        <p>SAP JSON endpoint: <code>POST /api/sap/orders.json</code></p>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" name="import_source" value="invoice_pdf">

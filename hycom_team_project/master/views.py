@@ -1,13 +1,12 @@
 import logging
 import uuid
-import xml.etree.ElementTree as ET
 import secrets
 from functools import wraps
 
 from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_POST
 from django.db import transaction
 import json
 
@@ -245,79 +244,60 @@ def get_orders(request):
         return JsonResponse(orders_data, safe=False)
 
 
-def _append_xml(parent, tag, value):
-    element = ET.SubElement(parent, tag)
-    element.text = "" if value is None else str(value)
-    return element
-
-
-def _format_xml_amount(value):
-    return f"{Decimal(str(value or 0)):.2f}"
-
-
-@require_GET
+@csrf_exempt
+@require_POST
 # @sap_api_key_required
-def export_orders_xml(request):
-    root = ET.Element("HycomOrderExport", {"version": "1.0"})
-    for order in (
+def export_orders_json(request):
+    orders = (
         Order.objects.select_related("state")
         .prefetch_related(Prefetch("items", queryset=OrderItem.objects.select_related("product")))
         .order_by("id")
-    ):
-        order_element = ET.SubElement(root, "Order")
-        _append_xml(order_element, "OrderNumber", order.order_number)
-        _append_xml(order_element, "Portal", order.portal)
-        _append_xml(order_element, "Status", order.status)
-        _append_xml(order_element, "Fulfilment", order.fulfilment)
-        _append_xml(order_element, "CustomerName", order.customer_name)
-        _append_xml(order_element, "BillingAddress", order.billing_address)
-        _append_xml(order_element, "ShippingAddress", order.shipping_address)
-        _append_xml(order_element, "StateCode", order.state_code or (order.state.code if order.state else ""))
-        _append_xml(order_element, "IsB2B", str(order.is_b2b).lower())
-        _append_xml(order_element, "GSTNumber", order.gst_number or "")
-
-        invoice = ET.SubElement(order_element, "Invoice")
-        _append_xml(invoice, "Number", order.invoice_number)
-        _append_xml(invoice, "Date", order.invoice_date.isoformat())
-
-        totals = ET.SubElement(order_element, "Totals", {"currency": "INR"})
+    )
+    invoice_data = []
+    for order in orders:
+        order_items = list(order.items.all())
         line_total = sum(
             (
                 (item.price or Decimal("0.00")) * item.quantity
-                for item in order.items.all()
+                for item in order_items
             ),
             Decimal("0.00"),
         )
-        for tag, value in (
-            ("TaxableAmount", order.amount),
-            ("GSTAmount", order.gst),
-            ("CGST", order.cgst),
-            ("SGST", order.sgst),
-            ("IGST", order.igst),
-            ("OtherCharges", Decimal(str(order.total_amount or 0)) - line_total),
-            ("TotalAmount", order.total_amount),
-        ):
-            _append_xml(totals, tag, _format_xml_amount(value))
+        other_charges = Decimal(str(order.total_amount or 0)) - line_total
+        items = []
+        for index, item in enumerate(order_items, start=1):
+            items.append({
+                "itemno": f"{index * 10:06d}",
+                "sap_material": item.product.material_code or "",
+                "customermaterial": "",
+                "orderqty": item.quantity,
+                "orderunit": "ST",
+                "itemcategory": "TAN",
+                "plant": "1000",
+                "storagelocation": "R018",
+                "baseprice": float(item.price or Decimal("0.00")),
+                "discount": 0,
+                "currency": "AED",
+                "othercharge": float(other_charges) if index == 1 else 0,
+            })
 
-        items_element = ET.SubElement(order_element, "Items")
-        for item in order.items.all():
-            item_element = ET.SubElement(items_element, "Item")
-            _append_xml(item_element, "SKU", item.product.sku)
-            _append_xml(item_element, "MaterialCode", item.product.material_code or "")
-            _append_xml(item_element, "ProductName", item.product.name)
-            _append_xml(item_element, "Quantity", item.quantity)
-            unit_price = item.price or Decimal("0.00")
-            _append_xml(item_element, "UnitPrice", _format_xml_amount(unit_price))
-            _append_xml(
-                item_element,
-                "LineTotal",
-                _format_xml_amount(unit_price * item.quantity),
-            )
+        invoice_data.append({
+            "invoiceno": order.invoice_number,
+            "saledoctype": "OR",
+            "soldtoparty": "",
+            "shiptoparty": "",
+            "inovoicedate": order.invoice_date.isoformat(),
+            "documentdate": order.invoice_date.isoformat(),
+            "currency": "AED",
+            "salesorder": "",
+            "deliverydocument": "",
+            "billingdocument": "",
+            "postingstatus": "",
+            "postingremarks": order.remarks or "",
+            "_Items": items,
+        })
 
-    content = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    response = HttpResponse(content, content_type="application/xml; charset=utf-8")
-    response["Content-Disposition"] = 'inline; filename="hycom-orders.xml"'
-    return response
+    return JsonResponse(invoice_data, safe=False)
 
 
 def _invoice_product(sku):

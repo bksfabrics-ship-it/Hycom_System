@@ -40,12 +40,13 @@ if not SECRET_KEY:
         raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set when DEBUG is False.')
     SECRET_KEY = 'dev-insecure-key-change-me'
 
-allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in allowed_hosts_env.split(',')
-    if host.strip()
-] or ['localhost', '127.0.0.1']
+# allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
+# ALLOWED_HOSTS = [
+#     host.strip()
+#     for host in allowed_hosts_env.split(',')
+#     if host.strip()
+# ] or ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ["*"]  # Allow all hosts for development; change in production
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()

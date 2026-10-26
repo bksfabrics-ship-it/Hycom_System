@@ -88,6 +88,7 @@ def convert_dc_excel(input_file):
     df = df.dropna(how="all").copy()
     df = _prepare_input_columns(df)
     df["DC Number"] = df["DC Number"].apply(clean_value)
+    df["DC Number"] = df["DC Number"].replace("", pd.NA).ffill().fillna("")
 
     workbook = Workbook()
     workbook.remove(workbook.active)

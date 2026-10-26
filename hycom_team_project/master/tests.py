@@ -1,8 +1,8 @@
+import json
 from decimal import Decimal
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
-from xml.etree import ElementTree
 
 from django.test import RequestFactory, SimpleTestCase
 from django.template.loader import get_template
@@ -10,7 +10,7 @@ from django.urls import reverse
 
 from .invoice_import import _parse_amazon, _parse_flipkart_invoice, _parse_shopify
 from .forms import OrderForm
-from .views import export_orders_xml
+from .views import export_orders_json
 
 
 class InvoiceParserTests(SimpleTestCase):
@@ -100,14 +100,14 @@ NET TOTAL (In Value) Rs. 2048.00
         self.assertEqual(invoice.total_amount, Decimal("2048.00"))
 
 
-class OrderXmlExportTests(SimpleTestCase):
-    def test_xml_endpoint_and_import_template_are_available(self):
-        self.assertEqual(reverse("sap_orders_xml"), "/api/sap/orders.xml")
+class OrderJsonExportTests(SimpleTestCase):
+    def test_json_endpoint_and_import_template_are_available(self):
+        self.assertEqual(reverse("sap_orders_json"), "/api/sap/orders.json")
         get_template("import_orders.html")
         self.assertNotIn("billing_address", OrderForm().fields)
         self.assertNotIn("shipping_address", OrderForm().fields)
 
-    def test_export_returns_xml_without_authentication(self):
+    def test_export_returns_sap_invoice_json(self):
         product = SimpleNamespace(
             sku="HY-CORE-M-GR-L",
             material_code="MAT-123",
@@ -138,51 +138,77 @@ class OrderXmlExportTests(SimpleTestCase):
             sgst=48.76,
             igst=0,
             total_amount=2048,
+            remarks="",
             items=SimpleNamespace(all=lambda: [item]),
         )
         manager = Mock()
         manager.select_related.return_value.prefetch_related.return_value.order_by.return_value = [order]
-        request = RequestFactory().get(
-            "/api/sap/orders.xml",
+        request = RequestFactory().post(
+            "/api/sap/orders.json",
             HTTP_AUTHORIZATION="Bearer sap-test-key",
         )
 
         with self.settings(SAP_API_KEY="sap-test-key"):
             with patch("master.views.Order.objects", manager):
-                response = export_orders_xml(request)
+                response = export_orders_json(request)
 
-        root = ElementTree.fromstring(response.content)
-        self.assertEqual(response["Content-Type"], "application/xml; charset=utf-8")
-        self.assertEqual(root.tag, "HycomOrderExport")
-        self.assertEqual(root.findtext("./Order/Totals/OtherCharges"), "50.00")
-        self.assertEqual(root.findtext("./Order/ShippingAddress"), "Delivery Street")
-        self.assertEqual(root.findtext("./Order/Items/Item/ProductName"), "Core & Scrub")
+        self.assertEqual(response["Content-Type"], "application/json")
+        invoice = json.loads(response.content)[0]
+        self.assertEqual(
+            list(invoice),
+            [
+                "invoiceno",
+                "saledoctype",
+                "soldtoparty",
+                "shiptoparty",
+                "inovoicedate",
+                "documentdate",
+                "currency",
+                "salesorder",
+                "deliverydocument",
+                "billingdocument",
+                "postingstatus",
+                "postingremarks",
+                "_Items",
+            ],
+        )
+        self.assertEqual(invoice["invoiceno"], "hycom00387")
+        self.assertEqual(invoice["inovoicedate"], "2026-07-13")
+        self.assertEqual(
+            invoice["_Items"],
+            [{
+                "itemno": "000010",
+                "sap_material": "MAT-123",
+                "customermaterial": "",
+                "orderqty": 2,
+                "orderunit": "ST",
+                "itemcategory": "TAN",
+                "plant": "1000",
+                "storagelocation": "R018",
+                "baseprice": 999.0,
+                "discount": 0,
+                "currency": "AED",
+                "othercharge": 50.0,
+            }],
+        )
 
-    def test_export_only_accepts_get_requests(self):
-        request = RequestFactory().post("/api/sap/orders.xml")
-
+    def test_export_only_accepts_post_requests(self):
+        request = RequestFactory().get(
+            "/api/sap/orders.json",
+            HTTP_AUTHORIZATION="Bearer sap-test-key",
+        )
         with self.settings(SAP_API_KEY="sap-test-key"):
-            response = export_orders_xml(request)
-
+            response = export_orders_json(request)
         self.assertEqual(response.status_code, 405)
 
     def test_export_rejects_requests_without_api_key(self):
-        request = RequestFactory().get("/api/sap/orders.xml")
-
+        request = RequestFactory().post("/api/sap/orders.json")
         with self.settings(SAP_API_KEY="sap-test-key"):
-            response = export_orders_xml(request)
-
+            response = export_orders_json(request)
         self.assertEqual(response.status_code, 401)
 
     def test_export_is_unavailable_when_api_key_is_not_configured(self):
-        request = RequestFactory().get(
-            "/api/sap/orders.xml",
-            HTTP_AUTHORIZATION="Bearer sap-test-key",
-        )
-
+        request = RequestFactory().post("/api/sap/orders.json")
         with self.settings(SAP_API_KEY=""):
-            response = export_orders_xml(request)
-
+            response = export_orders_json(request)
         self.assertEqual(response.status_code, 503)
-
-# Create your tests here.
