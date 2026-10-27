@@ -215,6 +215,17 @@ def order_amounts(items: list[dict]) -> tuple[Decimal, Decimal, Decimal]:
     return round_money(amount), round_money(gst), round_money(total)
 
 
+def order_adjustments(items: list[dict]) -> tuple[Decimal, Decimal]:
+    shipping = Decimal("0")
+    discount = Decimal("0")
+    for item in items:
+        components = price_components(item)
+        shipping += parse_decimal(components.get("shippingCharge"))
+        for key in ("discount", "promotionDiscount", "promotionalDiscount"):
+            discount += abs(parse_decimal(components.get(key)))
+    return round_money(shipping), round_money(discount)
+
+
 def map_flipkart_order(order_id: str, shipments: list[dict], items: list[dict]) -> dict:
     first_shipment = shipments[0] if shipments else {}
     first_item = items[0] if items else {}
@@ -236,6 +247,7 @@ def map_flipkart_order(order_id: str, shipments: list[dict], items: list[dict]) 
         else None
     )
     amount, gst, total_amount = order_amounts(items)
+    shipping_charge, discount = order_adjustments(items)
 
     if state and state.code == "33":
         cgst = round_money(gst / Decimal("2"))
@@ -265,6 +277,8 @@ def map_flipkart_order(order_id: str, shipments: list[dict], items: list[dict]) 
         "sgst": sgst,
         "igst": igst,
         "total_amount": total_amount,
+        "shipping_charge": shipping_charge,
+        "discount": discount,
         "remarks": "Imported from Flipkart API",
     }
 

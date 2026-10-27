@@ -120,6 +120,8 @@ class Order(models.Model):
     sgst = models.FloatField(null=True, blank=True)
     igst = models.FloatField(null=True, blank=True) 
     total_amount = models.FloatField(null=True, blank=True)
+    shipping_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     # Misc
     remarks = models.TextField(null=True, blank=True)
@@ -162,6 +164,10 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    taxable_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    cgst = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    sgst = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    igst = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     def save(self, *args, **kwargs):
 

@@ -300,11 +300,27 @@ def order_amounts_from_items(order_items: list[dict]) -> tuple[Decimal, Decimal,
     return round_money(amount), round_money(gst), round_money(total)
 
 
+def order_adjustments_from_items(order_items: list[dict]) -> tuple[Decimal, Decimal]:
+    shipping = Decimal("0")
+    discount = Decimal("0")
+    for item in order_items:
+        proceeds = item.get("proceeds") or {}
+        for breakdown in proceeds.get("breakdowns") or []:
+            breakdown_type = str(breakdown.get("type") or "").upper()
+            subtotal = money_amount(breakdown.get("subtotal"))
+            if breakdown_type == "SHIPPING":
+                shipping += subtotal
+            elif "DISCOUNT" in breakdown_type:
+                discount += abs(subtotal)
+    return round_money(shipping), round_money(discount)
+
+
 def map_amazon_api_order(order_data: dict, order_items: list[dict]) -> dict:
     amazon_order_id = order_data.get("orderId")
     address = recipient_address(order_data)
     state = find_state_by_name(address.get("stateOrRegion"))
     amount, gst, total_amount = order_amounts_from_items(order_items)
+    shipping_charge, discount = order_adjustments_from_items(order_items)
     is_b2b, gst_number = order_tax_registration(order_data)
     status = map_amazon_status_to_hycom_status(order_status_from_payload(order_data))
     invoice_date = parse_sp_api_datetime(order_data.get("createdTime")) or date.today()
@@ -338,6 +354,8 @@ def map_amazon_api_order(order_data: dict, order_items: list[dict]) -> dict:
         "sgst": sgst,
         "igst": igst,
         "total_amount": total_amount,
+        "shipping_charge": shipping_charge,
+        "discount": discount,
         "remarks": "Imported from Amazon SP-API",
     }
 

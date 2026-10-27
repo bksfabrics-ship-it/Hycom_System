@@ -12,7 +12,7 @@ class OrderForm(forms.ModelForm):
         # ✅ ONLY include user-input fields
         exclude = [
             'amount', 'gst', 'cgst', 'sgst', 'igst', 'total_amount', 'dc_date',
-            'billing_address', 'shipping_address',
+            'billing_address', 'shipping_address', 'shipping_charge', 'discount',
         ]
 
         widgets = {

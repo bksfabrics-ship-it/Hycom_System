@@ -254,7 +254,9 @@ def export_orders_json(request):
         .order_by("id")
     )
     invoice_data = []
+    print("orders............", orders)
     for order in orders:
+        print("order/////..............", order)
         order_items = list(order.items.all())
         line_total = sum(
             (
@@ -263,9 +265,35 @@ def export_orders_json(request):
             ),
             Decimal("0.00"),
         )
-        other_charges = Decimal(str(order.total_amount or 0)) - line_total
+        other_charges = (
+            Decimal(str(order.total_amount or 0))
+            - line_total
+            - Decimal(str(order.shipping_charge or 0))
+        )
         items = []
         for index, item in enumerate(order_items, start=1):
+            quantity = Decimal(item.quantity or 0)
+            gross_line = (item.price or Decimal("0.00")) * quantity
+            taxable_line = getattr(item, "taxable_amount", None)
+            if taxable_line is None:
+                taxable_line = (gross_line / Decimal("1.05")).quantize(Decimal("0.01"))
+            item_cgst = getattr(item, "cgst", None)
+            item_sgst = getattr(item, "sgst", None)
+            item_igst = getattr(item, "igst", None)
+            if item_cgst is None and item_sgst is None and item_igst is None:
+                item_tax = gross_line - taxable_line
+                if order.cgst or order.sgst:
+                    item_cgst = (item_tax / Decimal("2")).quantize(Decimal("0.01"))
+                    item_sgst = item_tax - item_cgst
+                    item_igst = Decimal("0.00")
+                else:
+                    item_cgst = Decimal("0.00")
+                    item_sgst = Decimal("0.00")
+                    item_igst = item_tax
+            else:
+                item_cgst = item_cgst or Decimal("0.00")
+                item_sgst = item_sgst or Decimal("0.00")
+                item_igst = item_igst or Decimal("0.00")
             items.append({
                 "itemno": f"{index * 10:06d}",
                 "sap_material": item.product.material_code or "",
@@ -273,12 +301,20 @@ def export_orders_json(request):
                 "orderqty": item.quantity,
                 "orderunit": "ST",
                 "itemcategory": "TAN",
-                "plant": "1000",
-                "storagelocation": "R018",
-                "baseprice": float(item.price or Decimal("0.00")),
-                "discount": 0,
+                "plant": "",
+                "storagelocation": "",
                 "currency": "AED",
-                "othercharge": float(other_charges) if index == 1 else 0,
+                "baseprice": float(
+                    (taxable_line / quantity).quantize(Decimal("0.01"))
+                    if quantity
+                    else Decimal("0.00")
+                ),
+                "gst": float(item_cgst + item_sgst + item_igst),
+                "cgst": float(item_cgst),
+                "sgst": float(item_sgst),
+                "igst": float(item_igst),
+                # "discount": 0,
+                # "othercharge": float(other_charges) if index == 1 else 0,
             })
 
         invoice_data.append({
@@ -294,6 +330,23 @@ def export_orders_json(request):
             "billingdocument": "",
             "postingstatus": "",
             "postingremarks": order.remarks or "",
+            "portal": order.portal or "",
+            "billingaddress": order.billing_address or "",
+            "shippingaddress": order.shipping_address or "",
+            "state": order.state.name if order.state else "",
+            "statecode": order.state.code if order.state else "",
+            "fulfillment": order.fulfilment or "",
+            "is_b2b": order.is_b2b,
+            "gst_number": order.gst_number or "",
+            "amount": order.amount or "",
+            "gst": order.gst or "",
+            "cgst": order.cgst or "",
+            "sgst": order.sgst or "",
+            "igst": order.igst or "",
+            "discount": float(order.discount or 0),
+            "othercharge": float(other_charges),
+            "shippingcharge": float(order.shipping_charge or 0),
+            "total_amount": order.total_amount or "",
             "_Items": items,
         })
 
@@ -835,7 +888,9 @@ def import_orders(request):
                             quantity = int(item_data["quantity"])
                             if quantity < 1:
                                 raise ValueError(f"Invalid quantity for SKU {item_data['sku']}.")
-                            mapped_items.append((product, quantity, Decimal(item_data["unit_price"])))
+                            mapped_items.append(
+                                (product, quantity, Decimal(item_data["unit_price"]), item_data)
+                            )
                             if product.pk in stock_requirements:
                                 stock_requirements[product.pk][1] += quantity
                             else:
@@ -871,13 +926,19 @@ def import_orders(request):
                             sgst=float(invoice_data["sgst"]),
                             igst=float(invoice_data["igst"]),
                             total_amount=float(invoice_data["total_amount"]),
+                            shipping_charge=invoice_data.get("shipping_charge", "0.00"),
+                            discount=invoice_data.get("discount", "0.00"),
                         )
-                        for product, quantity, unit_price in mapped_items:
+                        for product, quantity, unit_price, item_data in mapped_items:
                             OrderItem.objects.create(
                                 order=order,
                                 product=product,
                                 quantity=quantity,
                                 price=unit_price,
+                                taxable_amount=item_data.get("taxable_amount"),
+                                cgst=item_data.get("cgst"),
+                                sgst=item_data.get("sgst"),
+                                igst=item_data.get("igst"),
                             )
                         for product, required_quantity in stock_requirements.values():
                             product.stock -= required_quantity

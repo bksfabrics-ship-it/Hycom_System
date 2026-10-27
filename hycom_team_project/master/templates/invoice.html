@@ -295,6 +295,18 @@
                     <td>IGST</td>
                     <td class="text-end">Rs. {{ order.igst|default:0|floatformat:2 }}</td>
                 </tr>
+                {% if order.shipping_charge %}
+                <tr>
+                    <td>Shipping Charge <small>(included in invoice total)</small></td>
+                    <td class="text-end">Rs. {{ order.shipping_charge|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if order.discount %}
+                <tr>
+                    <td>Discount <small>(included in invoice total)</small></td>
+                    <td class="text-end">- Rs. {{ order.discount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
                 <tr class="grand-total">
                     <td>Total</td>
                     <td class="text-end">Rs. {{ order.total_amount|default:0|floatformat:2 }}</td>

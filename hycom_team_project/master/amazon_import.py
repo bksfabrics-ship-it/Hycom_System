@@ -226,6 +226,18 @@ def import_amazon_orders(uploaded_file):
         state = find_state(first_row.get("ship-state"))
         total = sum((row_total(row) for row in order_rows), Decimal("0"))
         gst = sum((row_tax(row) for row in order_rows), Decimal("0"))
+        shipping_charge = sum(
+            (as_decimal(row.data.get("shipping-price")) for row in order_rows),
+            Decimal("0"),
+        )
+        discount = sum(
+            (
+                abs(as_decimal(row.data.get("item-promotion-discount")))
+                + abs(as_decimal(row.data.get("ship-promotion-discount")))
+                for row in order_rows
+            ),
+            Decimal("0"),
+        )
 
         if gst == 0 and total > 0:
             base_amount = total / Decimal("1.05")
@@ -259,6 +271,8 @@ def import_amazon_orders(uploaded_file):
                     else Decimal("0"),
                     igst=Decimal("0") if state and state.code == "33" else round(gst, 2),
                     total_amount=round(total, 2),
+                    shipping_charge=round(shipping_charge, 2),
+                    discount=round(discount, 2),
                     remarks="Imported from Amazon order report",
                 )
 

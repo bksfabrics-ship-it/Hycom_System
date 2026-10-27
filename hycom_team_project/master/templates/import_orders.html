@@ -157,6 +157,12 @@
                 <div class="col-md-6">
                     <strong>B2B:</strong> {{ invoice.is_b2b|yesno:"Yes,No" }}<br>
                     <strong>GST number:</strong> {{ invoice.gst_number|default:"-" }}<br>
+                    {% if invoice.shipping_charge %}
+                    <strong>Shipping charge:</strong> Rs. {{ invoice.shipping_charge }}<br>
+                    {% endif %}
+                    {% if invoice.discount %}
+                    <strong>Discount:</strong> Rs. {{ invoice.discount }}<br>
+                    {% endif %}
                     <strong>Total:</strong> Rs. {{ invoice.total_amount }}<br>
                     <strong>Tax:</strong> Rs. {{ invoice.gst }}
                 </div>
