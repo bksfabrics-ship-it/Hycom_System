@@ -12,7 +12,7 @@ from .invoice_import import _parse_amazon, _parse_flipkart_invoice, _parse_shopi
 from .forms import OrderForm
 from .portal_imports.amazon_sp_api import order_adjustments_from_items
 from .portal_imports.flipkart_api import order_adjustments
-from .views import export_orders_json
+from .views import export_orders_json, export_return_orders_json
 
 
 class InvoiceParserTests(SimpleTestCase):
@@ -265,6 +265,10 @@ TOTAL: 95.19 2,029.00
 class OrderJsonExportTests(SimpleTestCase):
     def test_json_endpoint_and_import_template_are_available(self):
         self.assertEqual(reverse("sap_orders_json"), "/api/sap/orders.json")
+        self.assertEqual(
+            reverse("sap_return_orders_json"),
+            "/api/sap/return-orders.json",
+        )
         get_template("import_orders.html")
         self.assertNotIn("billing_address", OrderForm().fields)
         self.assertNotIn("shipping_address", OrderForm().fields)
@@ -380,6 +384,158 @@ class OrderJsonExportTests(SimpleTestCase):
         self.assertEqual(invoice["_Items"][0]["gst"], 95.14)
         self.assertEqual(invoice["_Items"][0]["cgst"], 47.57)
         self.assertEqual(invoice["_Items"][0]["sgst"], 47.57)
+        self.assertEqual(invoice["_Items"][0]["total_amount"], 1998.0)
+
+    def test_return_export_includes_returned_quantities_and_replacement_orders(self):
+        returned_product = SimpleNamespace(
+            material_code="000000000000001140",
+        )
+        source_item = SimpleNamespace(
+            product_id=7,
+            product=returned_product,
+            quantity=10,
+            price=Decimal("105.00"),
+            taxable_amount=Decimal("1000.00"),
+            cgst=Decimal("25.00"),
+            sgst=Decimal("25.00"),
+            igst=Decimal("0.00"),
+        )
+        state = SimpleNamespace(name="Abu Dhabi", code="AD")
+        source_order = SimpleNamespace(
+            order_number="1826800002",
+            invoice_number="INV-RET-1",
+            invoice_date=date(2026, 10, 24),
+            remarks="Return received",
+            portal="own",
+            customer_name="Return Customer",
+            billing_address="Billing Address",
+            shipping_address="Shipping Address",
+            state=state,
+            state_code="",
+            fulfilment="self",
+            is_b2b=True,
+            gst_number="GST-123",
+            cgst=25.0,
+            sgst=25.0,
+            discount=Decimal("100.00"),
+            total_amount=Decimal("1120.00"),
+            shipping_charge=Decimal("50.00"),
+            replacement_for=None,
+            items=SimpleNamespace(all=lambda: [source_item]),
+        )
+        returned_item = SimpleNamespace(
+            product_id=7,
+            product=returned_product,
+            quantity=3,
+        )
+        return_record = SimpleNamespace(
+            id=25,
+            order=source_order,
+            items=SimpleNamespace(all=lambda: [returned_item]),
+        )
+        return_manager = Mock()
+        return_manager.filter.return_value.select_related.return_value.prefetch_related.return_value.order_by.return_value = [
+            return_record
+        ]
+
+        replacement_product = SimpleNamespace(
+            material_code="000000000000001141",
+        )
+        replacement_item = SimpleNamespace(
+            product_id=8,
+            product=replacement_product,
+            quantity=2,
+            price=Decimal("210.00"),
+            taxable_amount=Decimal("400.00"),
+            cgst=Decimal("10.00"),
+            sgst=Decimal("10.00"),
+            igst=Decimal("0.00"),
+        )
+        replacement_order = SimpleNamespace(
+            order_number="1826800003",
+            invoice_number="INV-RET-2",
+            invoice_date=date(2026, 10, 25),
+            remarks="Replacement",
+            portal="own",
+            customer_name="Return Customer",
+            billing_address="Billing Address",
+            shipping_address="Shipping Address",
+            state=state,
+            state_code="",
+            fulfilment="self",
+            is_b2b=True,
+            gst_number="GST-123",
+            cgst=10.0,
+            sgst=10.0,
+            discount=Decimal("20.00"),
+            total_amount=Decimal("460.00"),
+            shipping_charge=Decimal("0.00"),
+            replacement_for=source_order,
+            items=SimpleNamespace(all=lambda: [replacement_item]),
+        )
+        order_manager = Mock()
+        order_manager.filter.return_value.select_related.return_value.prefetch_related.return_value.order_by.return_value = [
+            replacement_order
+        ]
+        request = RequestFactory().post(
+            "/api/sap/return-orders.json",
+            HTTP_AUTHORIZATION="Bearer sap-test-key",
+        )
+
+        with self.settings(SAP_API_KEY="sap-test-key"):
+            with patch("master.views.Return.objects", return_manager):
+                with patch(
+                    "master.views.Order",
+                    SimpleNamespace(objects=order_manager),
+                ):
+                    response = export_return_orders_json(request)
+
+        order_manager.filter.assert_called_once_with(is_replacement=True)
+        payload = json.loads(response.content)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(len(payload), 2)
+        self.assertEqual(payload[0]["returnorderno"], "1826800002")
+        self.assertEqual(payload[0]["saledoctype"], "CBAR")
+        self.assertEqual(payload[0]["inovoicedate"], "2026-10-24")
+        self.assertEqual(payload[0]["returnid"], "25")
+        self.assertFalse(payload[0]["is_replacement"])
+        self.assertEqual(payload[0]["_Items"][0]["orderqty"], 3)
+        self.assertEqual(payload[0]["_Items"][0]["itemcategory"], "CBRN")
+        self.assertEqual(payload[0]["_Items"][0]["baseprice"], 100.0)
+        self.assertEqual(payload[0]["customer_name"], "Return Customer")
+        self.assertEqual(payload[0]["billingaddress"], "Billing Address")
+        self.assertEqual(payload[0]["shippingaddress"], "Shipping Address")
+        self.assertEqual(payload[0]["state"], "Abu Dhabi")
+        self.assertEqual(payload[0]["statecode"], "AD")
+        self.assertEqual(payload[0]["fulfillment"], "self")
+        self.assertTrue(payload[0]["is_b2b"])
+        self.assertEqual(payload[0]["gst_number"], "GST-123")
+        self.assertEqual(payload[0]["amount"], 300.0)
+        self.assertEqual(payload[0]["gst"], 15.0)
+        self.assertEqual(payload[0]["cgst"], 7.5)
+        self.assertEqual(payload[0]["sgst"], 7.5)
+        self.assertEqual(payload[0]["total_amount"], 315.0)
+        self.assertEqual(payload[0]["discount"], 30.0)
+        self.assertEqual(payload[0]["othercharge"], 6.0)
+        self.assertEqual(payload[0]["_Items"][0]["cgst"], 7.5)
+        self.assertEqual(payload[0]["_Items"][0]["sgst"], 7.5)
+        self.assertEqual(payload[0]["_Items"][0]["total_amount"], 315.0)
+        self.assertNotIn("discount", payload[0]["_Items"][0])
+        self.assertNotIn("othercharge", payload[0]["_Items"][0])
+        self.assertEqual(payload[1]["returnorderno"], "1826800003")
+        self.assertTrue(payload[1]["is_replacement"])
+        self.assertEqual(payload[1]["replacement_for"], "1826800002")
+        self.assertEqual(payload[1]["_Items"][0]["orderqty"], 2)
+        self.assertEqual(payload[1]["_Items"][0]["baseprice"], 200.0)
+        self.assertEqual(payload[1]["_Items"][0]["total_amount"], 420.0)
+        self.assertEqual(payload[1]["discount"], 20.0)
+        self.assertEqual(payload[1]["othercharge"], 40.0)
+
+    def test_return_export_rejects_missing_api_key(self):
+        request = RequestFactory().post("/api/sap/return-orders.json")
+        with self.settings(SAP_API_KEY="sap-test-key"):
+            response = export_return_orders_json(request)
+        self.assertEqual(response.status_code, 401)
 
     def test_export_only_accepts_post_requests(self):
         request = RequestFactory().get(

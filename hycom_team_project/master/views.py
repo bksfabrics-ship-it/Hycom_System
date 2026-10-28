@@ -294,6 +294,7 @@ def export_orders_json(request):
                 item_cgst = item_cgst or Decimal("0.00")
                 item_sgst = item_sgst or Decimal("0.00")
                 item_igst = item_igst or Decimal("0.00")
+            item_total_amount = taxable_line + item_cgst + item_sgst + item_igst
             items.append({
                 "itemno": f"{index * 10:06d}",
                 "sap_material": item.product.material_code or "",
@@ -313,6 +314,7 @@ def export_orders_json(request):
                 "cgst": float(item_cgst),
                 "sgst": float(item_sgst),
                 "igst": float(item_igst),
+                "total_amount": float(item_total_amount),
                 # "discount": 0,
                 # "othercharge": float(other_charges) if index == 1 else 0,
             })
@@ -351,6 +353,249 @@ def export_orders_json(request):
         })
 
     return JsonResponse(invoice_data, safe=False)
+
+
+@csrf_exempt
+@require_POST
+# @sap_api_key_required
+def export_return_orders_json(request):
+    return_data = []
+    returns = (
+        Return.objects.filter(type="return")
+        .select_related("order", "order__replacement_for", "order__state")
+        .prefetch_related(
+            Prefetch(
+                "items",
+                queryset=ReturnItem.objects.select_related("product"),
+            ),
+            Prefetch(
+                "order__items",
+                queryset=OrderItem.objects.select_related("product"),
+            ),
+        )
+        .order_by("id")
+    )
+
+    for return_order in returns:
+        order = return_order.order
+        source_order_items = list(order.items.all())
+        order_items_by_product = {
+            item.product_id: item for item in source_order_items
+        }
+        original_line_total = sum(
+            (
+                (item.price or Decimal("0.00")) * item.quantity
+                for item in source_order_items
+            ),
+            Decimal("0.00"),
+        )
+        returned_items = [
+            (
+                return_item.product,
+                return_item.quantity,
+                order_items_by_product.get(return_item.product_id),
+            )
+            for return_item in return_order.items.all()
+        ]
+        return_data.append(
+            _return_order_payload(
+                order,
+                returned_items,
+                return_id=str(return_order.id),
+                is_replacement=False,
+                original_line_total=original_line_total,
+            )
+        )
+
+    replacement_orders = (
+        Order.objects.filter(is_replacement=True)
+        .select_related("replacement_for", "state")
+        .prefetch_related(
+            Prefetch(
+                "items",
+                queryset=OrderItem.objects.select_related("product"),
+            )
+        )
+        .order_by("id")
+    )
+    for order in replacement_orders:
+        replacement_order_items = list(order.items.all())
+        returned_items = [
+            (item.product, item.quantity, item)
+            for item in replacement_order_items
+        ]
+        original_line_total = sum(
+            (
+                (item.price or Decimal("0.00")) * item.quantity
+                for item in replacement_order_items
+            ),
+            Decimal("0.00"),
+        )
+        return_data.append(
+            _return_order_payload(
+                order,
+                returned_items,
+                return_id="",
+                is_replacement=True,
+                original_line_total=original_line_total,
+            )
+        )
+
+    return JsonResponse(return_data, safe=False)
+
+
+def _return_order_payload(
+    order,
+    order_items,
+    return_id,
+    is_replacement,
+    original_line_total,
+):
+    items = []
+    taxable_total = Decimal("0.00")
+    returned_line_total = Decimal("0.00")
+    cgst_total = Decimal("0.00")
+    sgst_total = Decimal("0.00")
+    igst_total = Decimal("0.00")
+    for index, (product, quantity, order_item) in enumerate(order_items, start=1):
+        item_quantity = Decimal(order_item.quantity or 0) if order_item else Decimal("0")
+        returned_quantity = Decimal(quantity or 0)
+        if order_item and item_quantity:
+            returned_line_total += (
+                (order_item.price or Decimal("0.00")) * returned_quantity
+            )
+            if order_item.taxable_amount is not None:
+                taxable_unit_price = order_item.taxable_amount / item_quantity
+            else:
+                taxable_unit_price = (
+                    (order_item.price or Decimal("0.00")) / Decimal("1.05")
+                )
+            taxable_amount = (taxable_unit_price * returned_quantity).quantize(
+                Decimal("0.01")
+            )
+            base_price = taxable_unit_price.quantize(Decimal("0.01"))
+
+            item_cgst = order_item.cgst
+            item_sgst = order_item.sgst
+            item_igst = order_item.igst
+            if item_cgst is None and item_sgst is None and item_igst is None:
+                gross_amount = (
+                    (order_item.price or Decimal("0.00")) * item_quantity
+                )
+                full_taxable_amount = (
+                    order_item.taxable_amount
+                    if order_item.taxable_amount is not None
+                    else (gross_amount / Decimal("1.05")).quantize(Decimal("0.01"))
+                )
+                full_tax = gross_amount - full_taxable_amount
+                item_cgst = Decimal("0.00")
+                item_sgst = Decimal("0.00")
+                item_igst = Decimal("0.00")
+                if order.cgst or order.sgst:
+                    item_cgst = (full_tax / Decimal("2")).quantize(Decimal("0.01"))
+                    item_sgst = full_tax - item_cgst
+                else:
+                    item_igst = full_tax
+
+            quantity_ratio = returned_quantity / item_quantity
+            item_cgst = (
+                (item_cgst or Decimal("0.00")) * quantity_ratio
+            ).quantize(Decimal("0.01"))
+            item_sgst = (
+                (item_sgst or Decimal("0.00")) * quantity_ratio
+            ).quantize(Decimal("0.01"))
+            item_igst = (
+                (item_igst or Decimal("0.00")) * quantity_ratio
+            ).quantize(Decimal("0.01"))
+        else:
+            taxable_amount = Decimal("0.00")
+            base_price = Decimal("0.00")
+            item_cgst = Decimal("0.00")
+            item_sgst = Decimal("0.00")
+            item_igst = Decimal("0.00")
+
+        taxable_total += taxable_amount
+        cgst_total += item_cgst
+        sgst_total += item_sgst
+        igst_total += item_igst
+        items.append({
+            "itemno": f"{index * 10:06d}",
+            "sap_material": product.material_code or "",
+            "customermaterial": "",
+            "orderqty": quantity,
+            "orderunit": "ST",
+            "itemcategory": "CBRN",
+            "plant": "",
+            "storagelocation": "",
+            "baseprice": float(base_price),
+            "gst": float(item_cgst + item_sgst + item_igst),
+            "cgst": float(item_cgst),
+            "sgst": float(item_sgst),
+            "igst": float(item_igst),
+            "total_amount": float(
+                taxable_amount + item_cgst + item_sgst + item_igst
+            ),
+            "currency": "AED",
+        })
+
+    total_gst = cgst_total + sgst_total + igst_total
+    adjustment_ratio = (
+        returned_line_total / original_line_total
+        if original_line_total
+        else Decimal("0.00")
+    )
+    discount = (
+        Decimal(str(order.discount or 0)) * adjustment_ratio
+    ).quantize(Decimal("0.01"))
+    other_charges = (
+        Decimal(str(order.total_amount or 0))
+        - original_line_total
+        - Decimal(str(order.shipping_charge or 0))
+    ) * adjustment_ratio
+    return {
+        "returnorderno": order.order_number,
+        "saledoctype": "CBAR",
+        "soldtoparty": "",
+        "shiptoparty": "",
+        "inovoicedate": order.invoice_date.isoformat(),
+        "documentdate": order.invoice_date.isoformat(),
+        "currency": "AED",
+        "invoiceno": order.invoice_number,
+        "sap_inv_no": "",
+        "customerreturn": "",
+        "postingstatus": "",
+        "postingremarks": order.remarks or "",
+        "returnid": return_id,
+        "is_replacement": is_replacement,
+        "customer_name": order.customer_name,
+        "portal": order.portal or "",
+        "billingaddress": order.billing_address or "",
+        "shippingaddress": order.shipping_address or "",
+        "state": order.state.name if order.state else "",
+        "statecode": (
+            order.state.code
+            if order.state
+            else order.state_code or ""
+        ),
+        "fulfillment": order.fulfilment or "",
+        "is_b2b": order.is_b2b,
+        "gst_number": order.gst_number or "",
+        "amount": float(taxable_total),
+        "gst": float(total_gst),
+        "cgst": float(cgst_total),
+        "sgst": float(sgst_total),
+        "igst": float(igst_total),
+        "total_amount": float(taxable_total + total_gst),
+        "discount": float(discount),
+        "othercharge": float(other_charges.quantize(Decimal("0.01"))),
+        "replacement_for": (
+            order.replacement_for.order_number
+            if order.replacement_for
+            else ""
+        ),
+        "portal": order.portal or "",
+        "_Items": items,
+    }
 
 
 def _invoice_product(sku):

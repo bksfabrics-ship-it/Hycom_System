@@ -64,7 +64,8 @@ The response is a JSON array. Each element represents one invoice:
         "gst": 95.14,
         "cgst": 47.57,
         "sgst": 47.57,
-        "igst": 0.0
+        "igst": 0.0,
+        "total_amount": 1998.0
       }
     ]
   }
@@ -74,6 +75,7 @@ The response is a JSON array. Each element represents one invoice:
 Invoice number and date come from the saved invoice. `sap_material` comes from
 the product's SAP material code. `baseprice` is the item's taxable unit price;
 `gst`, `cgst`, `sgst`, and `igst` are the corresponding item tax amounts.
+Each item's `total_amount` is its taxable line amount plus its GST.
 Order-level `amount` is taxable value, `gst` is total tax, and
 `total_amount = amount + gst`. The order-level `shippingcharge` is reported
 separately, so it is excluded from `othercharge` and is not counted twice.

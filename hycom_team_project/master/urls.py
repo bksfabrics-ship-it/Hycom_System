@@ -13,6 +13,7 @@ from .views import (
     export_dashboard_excel,
     import_orders,
     export_orders_json,
+    export_return_orders_json,
     app_settings,
 )
 from django.contrib.auth import views as auth_views
@@ -25,6 +26,7 @@ urlpatterns = [
     path('orders/dc/<int:pk>/', order_delivery_challan, name='order_delivery_challan'),
     path('orders/import/', import_orders, name='import_orders'),
     path('sap/orders.json', export_orders_json, name='sap_orders_json'),
+    path('sap/return-orders.json', export_return_orders_json, name='sap_return_orders_json'),
     path('order_list/', order_list, name='order_list'),
     path('orders/', get_orders),
     path('orders-ui/', create_order_ui),
