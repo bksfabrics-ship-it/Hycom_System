@@ -17,6 +17,8 @@ from datetime import date, datetime
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
+from master.inventory import deduct_order_stock
+
 
 @dataclass
 class ImportResult:
@@ -134,15 +136,7 @@ class PortalImport(ABC):
                             price=item_data["price"],
                         )
                         result.item_count += 1
-                    # ✅ Reduce stock as per ordered quantity.
-                    for item_data in items_data:
-                        product = item_data["product"]
-                        product.stock -= item_data["quantity"]
-                        product.save(update_fields=["stock"])
-
-                    # ✅ Mark stock as updated so it is never deducted twice.
-                    order.is_stock_updated = True
-                    order.save(update_fields=["is_stock_updated"])
+                    deduct_order_stock(order)
 
                 result.created_count += 1
                 result.created_orders.append(order_number)
@@ -159,4 +153,3 @@ class PortalImport(ABC):
                 continue
 
         return result
-

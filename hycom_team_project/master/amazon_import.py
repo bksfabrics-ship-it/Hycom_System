@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 from stock.models import Product
 
 from .models import Order, OrderItem, State
+from .inventory import deduct_order_stock
 
 
 REQUIRED_HEADERS = {
@@ -287,6 +288,8 @@ def import_amazon_orders(uploaded_file):
                         price=round(unit_price, 2),
                     )
                     result.item_count += 1
+
+                deduct_order_stock(order)
         except ValidationError as exc:
             result.skipped_count += 1
             result.skipped_orders.append(f"{order_number}: validation failed")

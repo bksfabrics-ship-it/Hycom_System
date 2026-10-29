@@ -69,6 +69,7 @@
                         <th>Qty</th>
                         <th>Total</th>
                         <th>SKU</th>
+                        <th>Current Stock</th>
                         <th>Material Code</th>
                         <th>Returns</th>
                         <th>Returned Qty</th>
@@ -124,6 +125,12 @@
                             {% endfor %}
                         </td>
 
+                        <td>
+                            {% for item in o.items.all %}
+                                {{ item.product.stock }}<br>
+                            {% endfor %}
+                        </td>
+
                         <!-- MATERIAL -->
                         <td>
                             {% for item in o.items.all %}
@@ -171,7 +178,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="16" class="text-center">No orders found</td>
+                        <td colspan="17" class="text-center">No orders found</td>
                     </tr>
                     {% endfor %}
                 </tbody>

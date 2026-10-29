@@ -26,6 +26,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from master.models import Order, OrderItem, State
+from master.inventory import deduct_order_stock
 from stock.models import Product
 
 from .base import ImportResult, PortalImport
@@ -651,6 +652,7 @@ class AmazonSPAPI(PortalImport):
                             old_product.save(update_fields=["stock"])
                         order.items.all().delete()
 
+                    order.is_stock_updated = False
                     for item_data in items_data:
                         OrderItem.objects.create(
                             order=order,
@@ -659,15 +661,7 @@ class AmazonSPAPI(PortalImport):
                             price=item_data["price"],
                         )
 
-                    # ✅ Reduce stock as per ordered quantity (allowed to go negative).
-                    for item_data in items_data:
-                        product = item_data["product"]
-                        product.stock -= item_data["quantity"]
-                        product.save(update_fields=["stock"])
-
-                    # ✅ Mark stock as updated so it is never deducted twice.
-                    order.is_stock_updated = True
-                    order.save(update_fields=["is_stock_updated"])
+                    deduct_order_stock(order)
 
                     if created:
                         result.item_count += len(items_data)

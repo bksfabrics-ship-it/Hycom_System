@@ -13,6 +13,7 @@ class OrderForm(forms.ModelForm):
         exclude = [
             'amount', 'gst', 'cgst', 'sgst', 'igst', 'total_amount', 'dc_date',
             'billing_address', 'shipping_address', 'shipping_charge', 'discount',
+            'is_stock_updated', 'stock_restored',
         ]
 
         widgets = {

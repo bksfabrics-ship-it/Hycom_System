@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 from utils.permissions import area_required
 from utils.permissions import can_access_area
 from .amazon_import import import_amazon_orders
+from .inventory import deduct_order_stock
 from .portal_imports.amazon_sp_api import import_amazon_orders_via_api
 from .portal_imports.flipkart_api import import_flipkart_orders_via_api
 from .invoice_import import parse_invoice_pdf
@@ -69,26 +70,6 @@ def sap_api_key_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return wrapper
-
-
-def update_stock_for_order(order, reverse=False):
-    """
-    reverse=True → add stock back
-    reverse=False → deduct stock
-    """
-
-    for item in order.items.all():
-        product = item.product
-
-        if reverse:
-            product.stock += item.quantity
-        else:
-            if product.stock < item.quantity:
-                raise Exception(f"Not enough stock for {product.name}")
-            product.stock -= item.quantity
-
-        product.save()
-
 
 
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -857,15 +838,6 @@ def create_order_ui(request):
                         qty = data['quantity']
                         price = data.get('price') or product.selling_price
 
-                        # 🔴 STOCK VALIDATION
-                        if not order.is_stock_updated:
-                            if product.stock < qty:
-                                raise Exception(f"Not enough stock for {product.name}")
-
-                            # ✅ Reduce stock
-                            product.stock -= qty
-                            product.save()
-
                         item = form.save(commit=False)
                         item.order = order
                         item.price = price
@@ -876,6 +848,8 @@ def create_order_ui(request):
                     # ❌ No items
                     if valid_items == 0:
                         raise Exception("At least one valid item is required")
+
+                    deduct_order_stock(order)
 
                     # ✅ STEP 3: Calculate totals
                     amount = Decimal('0')
@@ -1114,7 +1088,6 @@ def import_orders(request):
                             )
 
                         mapped_items = []
-                        stock_requirements = {}
                         for item_index, item_data in enumerate(invoice_data["items"]):
                             product_id = request.POST.get(
                                 f"product_{invoice_index}_{item_index}"
@@ -1136,19 +1109,6 @@ def import_orders(request):
                             mapped_items.append(
                                 (product, quantity, Decimal(item_data["unit_price"]), item_data)
                             )
-                            if product.pk in stock_requirements:
-                                stock_requirements[product.pk][1] += quantity
-                            else:
-                                stock_requirements[product.pk] = [product, quantity]
-
-                        for product, required_quantity in stock_requirements.values():
-                            if product.stock < required_quantity:
-                                raise ValueError(
-                                    f"Not enough stock for {product.name} "
-                                    f"(SKU {product.sku}); {required_quantity} required, "
-                                    f"{product.stock} available."
-                                )
-
                         state = State.objects.filter(code=invoice_data["state_code"]).first()
                         order = Order.objects.create(
                             portal=invoice_data["portal"],
@@ -1164,7 +1124,6 @@ def import_orders(request):
                             is_b2b=invoice_data["is_b2b"],
                             gst_number=invoice_data["gst_number"] or None,
                             status="Pending",
-                            is_stock_updated=True,
                             amount=float(invoice_data["amount"]),
                             gst=float(invoice_data["gst"]),
                             cgst=float(invoice_data["cgst"]),
@@ -1185,9 +1144,7 @@ def import_orders(request):
                                 sgst=item_data.get("sgst"),
                                 igst=item_data.get("igst"),
                             )
-                        for product, required_quantity in stock_requirements.values():
-                            product.stock -= required_quantity
-                            product.save(update_fields=["stock"])
+                        deduct_order_stock(order)
             except (ValueError, ValidationError) as exc:
                 messages.error(request, str(exc))
                 return redirect("/api/orders/import/")

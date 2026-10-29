@@ -1,18 +1,115 @@
 import json
+from io import BytesIO
 from decimal import Decimal
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from django.test import RequestFactory, SimpleTestCase
+from django.contrib.auth.models import AnonymousUser
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.template.loader import get_template
 from django.urls import reverse
+from openpyxl import Workbook
 
+from stock.models import Product
+from .amazon_import import import_amazon_orders
 from .invoice_import import _parse_amazon, _parse_flipkart_invoice, _parse_shopify
 from .forms import OrderForm
+from .inventory import deduct_order_stock
+from .models import Order, OrderItem
 from .portal_imports.amazon_sp_api import order_adjustments_from_items
 from .portal_imports.flipkart_api import order_adjustments
 from .views import export_orders_json, export_return_orders_json
+
+
+class AmazonOrderImportStockTests(TestCase):
+    def test_import_deducts_stock_for_duplicate_sku_rows_only_once(self):
+        product = Product.objects.create(
+            name="Test Scrub",
+            sku="TEST-SKU",
+            style="Core",
+            color="Navy Blue",
+            size="M",
+            gender="Female",
+            category="Medical Scrubs",
+            stock=0,
+        )
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.append([
+            "amazon-order-id",
+            "purchase-date",
+            "order-status",
+            "fulfillment-channel",
+            "sku",
+            "quantity",
+            "item-price",
+            "ship-state",
+        ])
+        worksheet.append(["ORDER-1", "2026-10-28", "Shipped", "Amazon", product.sku, 2, 200, ""])
+        worksheet.append(["ORDER-1", "2026-10-28", "Shipped", "Amazon", product.sku, 3, 300, ""])
+        report = BytesIO()
+        workbook.save(report)
+        report.seek(0)
+
+        result = import_amazon_orders(report)
+
+        product.refresh_from_db()
+        order = result.created_orders[0]
+        imported_order = Order.objects.get(order_number=order)
+        self.assertEqual(result.created_count, 1)
+        self.assertEqual(result.item_count, 2)
+        self.assertEqual(product.stock, -5)
+        self.assertTrue(imported_order.is_stock_updated)
+
+        report.seek(0)
+        duplicate_result = import_amazon_orders(report)
+
+        product.refresh_from_db()
+        self.assertEqual(duplicate_result.skipped_count, 1)
+        self.assertEqual(product.stock, -5)
+
+    def test_order_stock_deduction_aggregates_items_and_is_idempotent(self):
+        product = Product.objects.create(
+            name="Manual Order Scrub",
+            sku="MANUAL-TEST-SKU",
+            style="Core",
+            color="Navy Blue",
+            size="L",
+            gender="Female",
+            category="Medical Scrubs",
+            stock=0,
+        )
+        order = Order.objects.create(
+            portal="own",
+            order_number="MANUAL-ORDER-1",
+            customer_name="Test Customer",
+            invoice_number="MANUAL-INVOICE-1",
+            invoice_date=date(2026, 10, 28),
+            fulfilment="self",
+            status="Pending",
+        )
+        OrderItem.objects.create(order=order, product=product, quantity=2, price=100)
+        OrderItem.objects.create(order=order, product=product, quantity=3, price=100)
+
+        deduct_order_stock(order)
+        deduct_order_stock(order)
+
+        product.refresh_from_db()
+        order.refresh_from_db()
+        self.assertEqual(product.stock, -5)
+        self.assertTrue(order.is_stock_updated)
+        order.return_count = 0
+        order.return_qty = 0
+        request = RequestFactory().get("/api/order_list/")
+        request.user = AnonymousUser()
+        rendered = get_template("order_list.html").render({
+            "orders": [order],
+            "request": request,
+            "user": request.user,
+        })
+        self.assertIn("Current Stock", rendered)
+        self.assertIn("-5", rendered)
 
 
 class InvoiceParserTests(SimpleTestCase):
@@ -274,6 +371,8 @@ class OrderJsonExportTests(SimpleTestCase):
         self.assertNotIn("shipping_address", OrderForm().fields)
         self.assertNotIn("shipping_charge", OrderForm().fields)
         self.assertNotIn("discount", OrderForm().fields)
+        self.assertNotIn("is_stock_updated", OrderForm().fields)
+        self.assertNotIn("stock_restored", OrderForm().fields)
 
     def test_invoice_template_displays_shipping_and_discount_without_double_counting(self):
         order = SimpleNamespace(
